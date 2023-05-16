@@ -100,11 +100,11 @@
 	},
 	"sources": {
 		"contracts/Guild_flattened.sol": {
-			"keccak256": "0x0e4f728037adcc55641e381b208495735f3df15290dbba2c635edb7e46e4911e",
+			"keccak256": "0x0db4ec46eea51d7b491f3fa0fb5c2e111dc7ff74985d02e4b83935040a7709ea",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://fc453516c678b679c42770c00fa30973474bd752459b5a80cf455de15cf743eb",
-				"dweb:/ipfs/QmNtkxVEk7VYsAzbErXfuMftRhBjoM9zgoCz99CX96hR9t"
+				"bzz-raw://4887b7e7848f9b10a6f6fa428171d5682b82ee7bbab05176455e256da3097343",
+				"dweb:/ipfs/QmUhT29KE9wbiMLAq12BASP2hRhww1kygBk84MjhGf4e4d"
 			]
 		}
 	},
