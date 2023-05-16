@@ -167,6 +167,19 @@
 				"type": "function"
 			},
 			{
+				"inputs": [],
+				"name": "TreasuryDistributionContract",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
 				"inputs": [
 					{
 						"internalType": "uint256",
@@ -364,6 +377,57 @@
 				"type": "function"
 			},
 			{
+				"inputs": [],
+				"name": "getinComeInfosLength",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_user",
+						"type": "address"
+					}
+				],
+				"name": "getisNotdeputyGuildManager",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_user",
+						"type": "address"
+					}
+				],
+				"name": "getisNotguildManager",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
 				"inputs": [
 					{
 						"internalType": "uint256",
@@ -372,6 +436,32 @@
 					}
 				],
 				"name": "getmemberLength",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "gettoBeAdded",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "gettransferOperatesLength",
 				"outputs": [
 					{
 						"internalType": "uint256",
@@ -434,6 +524,11 @@
 						"internalType": "address",
 						"name": "guildManager",
 						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "asset",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
@@ -468,9 +563,32 @@
 						"internalType": "address",
 						"name": "guildManager",
 						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "asset",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_amount",
+						"type": "uint256"
+					}
+				],
+				"name": "guildIncome",
+				"outputs": [],
+				"stateMutability": "nonpayable",
 				"type": "function"
 			},
 			{
@@ -492,6 +610,40 @@
 						"internalType": "address",
 						"name": "",
 						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "inComeInfos",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "transfer",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "time",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
@@ -530,6 +682,25 @@
 					}
 				],
 				"name": "isNotdeputyGuildManager",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "isNotguildManager",
 				"outputs": [
 					{
 						"internalType": "bool",
@@ -632,8 +803,23 @@
 				"outputs": [
 					{
 						"internalType": "address",
-						"name": "",
+						"name": "member",
 						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "PID",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "FID",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "DATE",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
@@ -655,6 +841,19 @@
 			{
 				"inputs": [],
 				"name": "pauseContract",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_GuildNum",
+						"type": "uint256"
+					}
+				],
+				"name": "quitGuild",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
@@ -931,6 +1130,19 @@
 				"inputs": [
 					{
 						"internalType": "address",
+						"name": "_addr",
+						"type": "address"
+					}
+				],
+				"name": "setTreasuryDistributionContract",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
 						"name": "_weth",
 						"type": "address"
 					}
@@ -1004,6 +1216,45 @@
 						"internalType": "address",
 						"name": "",
 						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "transferOperates",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "operate",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "_to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "time",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
@@ -1093,6 +1344,11 @@
 						"internalType": "address",
 						"name": "applicationer",
 						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "time",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
@@ -1127,6 +1383,11 @@
 						"internalType": "address",
 						"name": "guildManager",
 						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "asset",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
@@ -1260,11 +1521,11 @@
 	},
 	"sources": {
 		"contracts/Guild_flattened.sol": {
-			"keccak256": "0x0e4f728037adcc55641e381b208495735f3df15290dbba2c635edb7e46e4911e",
+			"keccak256": "0x0db4ec46eea51d7b491f3fa0fb5c2e111dc7ff74985d02e4b83935040a7709ea",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://fc453516c678b679c42770c00fa30973474bd752459b5a80cf455de15cf743eb",
-				"dweb:/ipfs/QmNtkxVEk7VYsAzbErXfuMftRhBjoM9zgoCz99CX96hR9t"
+				"bzz-raw://4887b7e7848f9b10a6f6fa428171d5682b82ee7bbab05176455e256da3097343",
+				"dweb:/ipfs/QmUhT29KE9wbiMLAq12BASP2hRhww1kygBk84MjhGf4e4d"
 			]
 		}
 	},
