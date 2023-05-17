@@ -1,6 +1,6 @@
 {
 	"compiler": {
-		"version": "0.8.17+commit.8df45f5f"
+		"version": "0.8.18+commit.87f61d96"
 	},
 	"language": "Solidity",
 	"output": {
@@ -230,26 +230,26 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"contracts/ogVersionA.sol": "IERC20"
+			"contracts/FLM.sol": "IERC20"
 		},
-		"evmVersion": "london",
+		"evmVersion": "paris",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"
 		},
 		"optimizer": {
-			"enabled": true,
+			"enabled": false,
 			"runs": 200
 		},
 		"remappings": []
 	},
 	"sources": {
-		"contracts/ogVersionA.sol": {
-			"keccak256": "0x5695a8b11bdc7b7f0cc6972dd83b6f50c73deed5cb900558ad1af26ddf5ae206",
+		"contracts/FLM.sol": {
+			"keccak256": "0x17692b4ba71f88454f7c78f0298df3ff273dea8c09cadfc9ae301755bfc01650",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://416c08b20d7bb82f28a8e5fbadfe4d4bbfc87c20c0b6d372b88e5ea9a620a6b8",
-				"dweb:/ipfs/QmQGAqjj6y5x1ztvr9dUgGFcKjdyT8cFWQb9fMa8rBUdEU"
+				"bzz-raw://0897623972f66bf89487eca20e47677f691e3c664fe009415ccf8d1cabb8939f",
+				"dweb:/ipfs/QmTNCGAD7s71UHu4z8NRPvgrb1gWwS1svzc1y2Vua1pZES"
 			]
 		}
 	},
