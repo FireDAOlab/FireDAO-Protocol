@@ -2832,13 +2832,13 @@ contract Guild is ERC1155,Ownable {
         isNotguildManager[_to] = true;
     }
     function setDeputyGuildManager(uint256 _GuildNum, address _to) public {
-        require(msg.sender == owner() || msg.sender == userGuildInFo[userGuildNum[msg.sender]].guildManager,"no access");
+        require( msg.sender == userGuildInFo[userGuildNum[msg.sender]].guildManager || msg.sender == owner() ,"no access");
         require(_to != address(0), "Cannot set zero address");
         isNotdeputyGuildManager[_to] = true;
         idDeputyGuildManager[_GuildNum].push(_to);
     }
     function deleteDeputyGuildManager(uint256 _GuildNum, address _to) public{
-        require(msg.sender == owner() || msg.sender == userGuildInFo[userGuildNum[msg.sender]].guildManager,"no access");
+        require( msg.sender == userGuildInFo[userGuildNum[msg.sender]].guildManager || msg.sender == owner() ,"no access");
         require(_to != address(0), "Cannot set zero address");
         isNotdeputyGuildManager[_to] = false;
         for(uint256 i = 0 ;i <idDeputyGuildManager[_GuildNum].length;i++ ){

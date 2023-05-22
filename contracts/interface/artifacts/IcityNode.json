@@ -50,6 +50,7 @@
 		"gasEstimates": null,
 		"methodIdentifiers": {
 			"cityNodeIncome(address,uint256)": "f3e0fb38",
+			"cityNodeTreasuryAddr(address)": "4d64e73a",
 			"getIsCityNode(address,uint256)": "3fc196d0",
 			"isNotCityNodeLight(address)": "721d9a00",
 			"isNotCityNodeUsers(address)": "932af1ef"
@@ -72,6 +73,25 @@
 			"name": "cityNodeIncome",
 			"outputs": [],
 			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "_user",
+					"type": "address"
+				}
+			],
+			"name": "cityNodeTreasuryAddr",
+			"outputs": [
+				{
+					"internalType": "address",
+					"name": "",
+					"type": "address"
+				}
+			],
+			"stateMutability": "view",
 			"type": "function"
 		},
 		{

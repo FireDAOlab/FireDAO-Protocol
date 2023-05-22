@@ -5,26 +5,21 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./lib/Address.sol";
 import "./interface/IUniswapV2Router02.sol";
-interface ICityNode{
-    function checkTotalReputationPointsExternal(address user)external view returns(uint256);
-}
+import "./interface/IReputation.sol";
+
 contract MarketValueManager is Ownable {
-    IERC20 public BNB;
+    IERC20 public weth;
     address public token;
     uint256 public cooldown;
     IUniswapV2Router02 public uniswapV2Router;
     mapping(address => uint256) public isOrNotUseWallet;
     address public cityNodeAddress;
     constructor() {
-        //mainnet
-        // BNB = IERC20(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-        // BNB.approve(address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c), 10**34);
-        //testnet
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3);
         uniswapV2Router = _uniswapV2Router;
-         BNB = IERC20(uniswapV2Router.WETH());
-         BNB.approve(address(0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3), 10**34);
-         BNB.approve(address(this), 10**34);
+        weth = IERC20(uniswapV2Router.WETH());
+        weth.approve(address(0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3), 10**34);
+        weth.approve(address(this), 10**34);
     }
     modifier notContract() {
         require(!Address.isContract(msg.sender), "No contracts");
@@ -35,8 +30,7 @@ contract MarketValueManager is Ownable {
     }
 
     function buyAndBurn() public  {
-        require(ICityNode(cityNodeAddress).checkTotalReputationPointsExternal(msg.sender) > 100000*10*18 ,"Reputation Points is not enough");
-        require(BNB.balanceOf(address(this)) >=10 **18 , "BNB balance error");
+        require(weth.balanceOf(address(this)) >=10 **18 , "BNB balance error");
         require(block.timestamp > cooldown + 300 , "is not cooldown");
         require(IERC20(token).balanceOf(msg.sender) > 1000*10**18,"u hold amount error" );
         if(block.timestamp - isOrNotUseWallet[msg.sender] < 3600){
@@ -52,7 +46,7 @@ contract MarketValueManager is Ownable {
     }
 
     function checkBNBBalance() public view returns(uint256) {
-        return BNB.balanceOf(address(this));
+        return weth.balanceOf(address(this));
     }
  
     function setAimToken(address _token) public onlyOwner {
@@ -77,6 +71,6 @@ contract MarketValueManager is Ownable {
         IERC20(token).transfer(msg.sender, checkSAFEBalance()/100*5);
     }
     function withdraw() public onlyOwner{
-        BNB.transfer(msg.sender, checkBNBBalance());
+        weth.transfer(msg.sender, checkBNBBalance());
     }
 }

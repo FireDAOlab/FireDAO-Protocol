@@ -555,6 +555,19 @@
 			},
 			{
 				"inputs": [],
+				"name": "fdtToken",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
 				"name": "fireSeed",
 				"outputs": [
 					{
@@ -595,7 +608,7 @@
 						"type": "address"
 					}
 				],
-				"stateMutability": "nonpayable",
+				"stateMutability": "view",
 				"type": "function"
 			},
 			{
@@ -1253,6 +1266,19 @@
 			{
 				"inputs": [
 					{
+						"internalType": "address",
+						"name": "_addr",
+						"type": "address"
+					}
+				],
+				"name": "setfdtTokenAddr",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
 						"internalType": "bytes4",
 						"name": "interfaceId",
 						"type": "bytes4"
@@ -1563,11 +1589,11 @@
 			]
 		},
 		"contracts/CityNode.sol": {
-			"keccak256": "0x12886fe32d38c331abc8473110bb9905d7f3278dc08db0edeade0a6fd51086f1",
+			"keccak256": "0xe6863da2ce3602992d5d6719eb3ad76bea6caca4268f1479bff0f9ab4e402dd4",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://55d800d694c9d226b4b68d4bd35ee353d2cf912afc208f82d0e8fa89e0b31399",
-				"dweb:/ipfs/Qmdqw9VsjGRJZN3F1YkxthrLhyeR5jw95oqevbMBGPK4mi"
+				"bzz-raw://4dd067fa94174a60161ec46b7aadf889d7a0c6fd5d9e29175e5b03ee4dbfe26b",
+				"dweb:/ipfs/QmSDEvWaSR7WPwjQirHB6hRw7uv7gnfSF3KW41wqVJ2hrH"
 			]
 		},
 		"contracts/CityNodeTreasury.sol": {
