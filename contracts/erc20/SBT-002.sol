@@ -9,27 +9,23 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 
 
-contract FDSBT002 is ERC20,Ownable{
+contract FDSBT003 is ERC20,Ownable{
     using SafeMath for uint256;
     struct Checkpoint {
         uint32 fromBlock;
         uint96 votes;
     }
-    bool public status;
-
+    bool public status = false;
     address public flameFdtExchange;
-    mapping(address => bool) public allowAddr;
     mapping (address => mapping (uint32 => Checkpoint)) public checkpoints;
     mapping (address => uint32) public numCheckpoints;
     
     event DelegateVotesChanged(address indexed delegate, uint256 previousBalance, uint256 newBalance);
-    constructor() ERC20("SBT-002","SBT-002"){
+    constructor(address _exchange)  ERC20("SBT-002","SBT-002"){
+    	flameFdtExchange = _exchange;
     }
     function setStatus() public {
         status = !status;
-    }
-    function setallowAddr(address _addr , bool _bool) public onlyOwner {
-        allowAddr[_addr] = _bool;
     }
     function setflameFdtExchange(address _exchange) public onlyOwner {
 		flameFdtExchange = _exchange;
@@ -37,13 +33,13 @@ contract FDSBT002 is ERC20,Ownable{
 
     function mint(address account, uint256 amount) external {
     require(!status, "status is false");
-	require(allowAddr[msg.sender],"caller is not fireSoul");
+	require(msg.sender == flameFdtExchange,"caller is not fireSoul");
         _mint( account, amount);
     }
     function burn(address account, uint256 amount) external {
 	require(!status , "status is false");
-	require(allowAddr[msg.sender],"caller is not fireSoul");
-	    _burn(account, amount);
+	require(msg.sender == flameFdtExchange,"caller is not fireSoul");
+	_burn(account, amount);
     }
 
     function transfer(address recipient, uint256 amount) public virtual override returns (bool) {

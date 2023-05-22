@@ -9,7 +9,7 @@
 				"inputs": [
 					{
 						"internalType": "address",
-						"name": "_exchange",
+						"name": "_fireSoul",
 						"type": "address"
 					}
 				],
@@ -263,7 +263,7 @@
 			},
 			{
 				"inputs": [],
-				"name": "flameFdtExchange",
+				"name": "fireSoul",
 				"outputs": [
 					{
 						"internalType": "address",
@@ -412,21 +412,21 @@
 				"type": "function"
 			},
 			{
-				"inputs": [],
-				"name": "setStatus",
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_fireSoul",
+						"type": "address"
+					}
+				],
+				"name": "setFireSoulAddress",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
 			},
 			{
-				"inputs": [
-					{
-						"internalType": "address",
-						"name": "_exchange",
-						"type": "address"
-					}
-				],
-				"name": "setflameFdtExchange",
+				"inputs": [],
+				"name": "setStatus",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
@@ -595,7 +595,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"contracts/erc20/SBT-002.sol": "FDSBT003"
+			"contracts/erc20/SBT-003.sol": "FDSBT003"
 		},
 		"evmVersion": "paris",
 		"libraries": {},
@@ -665,12 +665,12 @@
 				"dweb:/ipfs/QmQJquTMtc6fgm5JQzGdsGpA2fqBe3MHWEdt2qzaLySMdN"
 			]
 		},
-		"contracts/erc20/SBT-002.sol": {
-			"keccak256": "0x568a7213f39c595ff0ed69ffd541ca898a596bf43c944dd2b038f90a9035bfa2",
+		"contracts/erc20/SBT-003.sol": {
+			"keccak256": "0x3bd2d3cc447d6b83f70af26bce7dd18c12692d599684a213051a0feb8ecc3ca5",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://dd874810debcb7473abe6b6e12c2f532d4d2f1bebe265071cccf5c85790a29ce",
-				"dweb:/ipfs/QmYncP8NSDFVGrn47Rw4tWj2aMTT9o66jvCGBACsSxXmdC"
+				"bzz-raw://440ea2ca22ff923f228dddc274c2f2242121d3a66425861e8103c1d6895451f5",
+				"dweb:/ipfs/QmeZUN95hhW4zV89gNP7LERLqstsSmfmSFJEM5EdSDkcwH"
 			]
 		}
 	},

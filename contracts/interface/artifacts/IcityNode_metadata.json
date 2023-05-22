@@ -27,25 +27,6 @@
 				"inputs": [
 					{
 						"internalType": "address",
-						"name": "_user",
-						"type": "address"
-					}
-				],
-				"name": "cityNodeTreasuryAddr",
-				"outputs": [
-					{
-						"internalType": "address",
-						"name": "",
-						"type": "address"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
-						"internalType": "address",
 						"name": "_account",
 						"type": "address"
 					},
@@ -127,11 +108,11 @@
 	},
 	"sources": {
 		"contracts/interface/ICityNode.sol": {
-			"keccak256": "0x8c9b98eaaa3c97073e216f837da94c1311572ae6d94abd9576392fab690d0f81",
+			"keccak256": "0x1828cc6799309a6a9961616f3da358f27fdfaeafadfc48fcf8cadfc19371c0d9",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://c3f2f0571d5f51f23242c5023d3c0947a96ed4c9a6897812d092bef8512b60e0",
-				"dweb:/ipfs/Qmc719kaubxkcMasQxTACNmJ5HJojNcKtAiEZ1UG1xb4bj"
+				"bzz-raw://a26a1a097f2375eccd0f55cd1d889b5c359b3022e1a35877b8646560b88cc100",
+				"dweb:/ipfs/QmVJ2pFvPDCGnQEjhkXCQk2YkAjPnUEk6BxXKYRmnWGBCW"
 			]
 		}
 	},

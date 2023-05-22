@@ -5,6 +5,7 @@ coverage.json
 typechain
 typechain-types
 
-# Hardhat files
+#Hardhat files
 cache
-contracts/artifacts
+artifacts
+.idea
