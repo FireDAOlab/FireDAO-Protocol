@@ -19,7 +19,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"contracts/FLM.sol": "Context"
+			"contracts/Guild_flattened.sol": "Context"
 		},
 		"evmVersion": "paris",
 		"libraries": {},
@@ -27,18 +27,18 @@
 			"bytecodeHash": "ipfs"
 		},
 		"optimizer": {
-			"enabled": false,
+			"enabled": true,
 			"runs": 200
 		},
 		"remappings": []
 	},
 	"sources": {
-		"contracts/FLM.sol": {
-			"keccak256": "0x17692b4ba71f88454f7c78f0298df3ff273dea8c09cadfc9ae301755bfc01650",
+		"contracts/Guild_flattened.sol": {
+			"keccak256": "0x0db4ec46eea51d7b491f3fa0fb5c2e111dc7ff74985d02e4b83935040a7709ea",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://0897623972f66bf89487eca20e47677f691e3c664fe009415ccf8d1cabb8939f",
-				"dweb:/ipfs/QmTNCGAD7s71UHu4z8NRPvgrb1gWwS1svzc1y2Vua1pZES"
+				"bzz-raw://4887b7e7848f9b10a6f6fa428171d5682b82ee7bbab05176455e256da3097343",
+				"dweb:/ipfs/QmUhT29KE9wbiMLAq12BASP2hRhww1kygBk84MjhGf4e4d"
 			]
 		}
 	},
