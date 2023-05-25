@@ -1,4 +1,5 @@
 
+
 // File: contracts/interface/IReputation.sol
 
 pragma solidity ^0.8.0;
@@ -2569,141 +2570,121 @@ contract FirePassport is IFirePassport,ERC721URIStorage {
     }
      receive() external payable {}
 }
-
 pragma solidity ^0.8.0;
 
-interface IFireSoul {
-	function checkFID(address user) external view returns(bool);
-    function getSoulAccount(address _user) external view returns(address);
-    function checkFIDA(address _user) external view returns(uint256);
-}
-pragma solidity ^0.8.0;
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interface/IUniswapV2Router02.sol";
 
-
-
-contract Guild is ERC1155,Ownable {
-
-    struct guildInFo{
-        string guildName;
-        string logo;
-        string guildDescribe;
-        address guildManager;
-        uint256 asset;
-    }
-
-    struct application{
-        uint256 GuildNum;
-        uint256 PID;
-        uint256 FID;
-        string applicationLink;
-        address applicationer;
-        uint256 time;
-
-    }
-    struct memberInfo{
-        address member;
-        uint256 PID;
-        uint256 FID;
-        uint256 DATE;
-    }
-    struct inComeInfo{
-        uint256 id;
-        address transfer;
-        uint256 amount;
-        uint256 time;
-    }
-    struct transferOperate{
-        uint256 id;
-        address operate;
-        address _to;
-        uint256 amount;
-        uint256 time;
-    }
+contract normalPool  {
     FirePassport fp;
-
-    address public fireSoul;
-    uint256 public guildId;
-    uint256 public joinRestrictions;
-    uint256 public MAX;
-    address public weth;
-    address[] public secondaryAdministrators;
-    address[] public toBeAdded;
-    inComeInfo[] public inComeInfos;
-    transferOperate[] public transferOperates;
-    address public reputation;
-    address public TreasuryDistributionContract;
     bool public status;
-    mapping(address => bool) public joinStatus;
-    mapping(address => bool) public isnotWhitelistUser; 
-    mapping(uint256 =>mapping(address => bool)) public isnotcreater;
-    mapping(address => uint256) public userGuildNum;
-    mapping(address => mapping(uint256 =>guildInFo[])) public guildInFoOWner;
-    mapping(uint256 => guildInFo) public userGuildInFo;
-    mapping(address => application) public userApplication;
-    mapping(address => bool) public userStatus;
-    mapping(uint256 => address[]) public idDeputyGuildManager;
-    mapping(uint256 => memberInfo[]) public member;
-    mapping(address => bool) public isNotguildManager;
-    mapping(address => bool) public isNotdeputyGuildManager;
-    guildInFo[] public guildInFos;
-    constructor(address _weth)ERC1155("uri") {
-        MAX = 10000000000000000000;
-        weth = _weth;
-        setFireSoul(0xEFb981c48870Fe757850e993B77810A887c37b14);
-        // setFpAddr(0x1853B8d43B9500F60cc68b672642A02eC26667B6);
-        setReputation(0x87a0941bBdE86Cf5C5b3DC68da4A2018a49BFaaB);
-        setTreasuryDistributionContract(0xA8FcF03CDEc12CF19767d12aC4c627FF6e5D1c21);
-    }
-    function getinComeInfosLength() public view returns(uint256) {
-        return inComeInfos.length;
-    }
-    function gettransferOperatesLength() public view returns(uint256 ) {
-        return transferOperates.length;
-    }
-    function gettoBeAdded() public view returns(uint256) {
-       return toBeAdded.length;
-    }
-    function getisNotguildManager(address _user) public view returns(bool){
-       return isNotguildManager[_user];
-    }
-    function getisNotdeputyGuildManager(address _user) public view returns(bool) {
-        return isNotdeputyGuildManager[_user];
-    }
-    function setTreasuryDistributionContract(address _addr) public onlyOwner{
-        TreasuryDistributionContract = _addr;
-    }
+    uint256 public reputationAmount;
+    uint256 public contractCall;
+    uint256 public AWARD_RATIO;
+    uint256 public PURCHASE_RATIO;
+    uint256 constant FEE_BASE = 100;
+    uint256 public intervals;
+    uint256 public contractIntervals;
+    uint256 public tokenAmount;
+    address public weth;
+    address public fdt;
+    address public reputation;
+    address public poolManager;
+    address public DEAD = address(0x000000000000000000000000000000000000dEaD);
+    mapping(address => uint256) public userCall;
+    mapping(address => bool) public userPass;
+    event record(uint256 pid, string username,uint256 fidScore,address user, uint256 burn,uint256 rewards,uint256 time);
 
-    function guildIncome(uint256 _id,uint256 _amount) external {
-        require(msg.sender == TreasuryDistributionContract,"no access");
-        userGuildInFo[_id].asset += _amount;
-        inComeInfo memory _info = inComeInfo(_id,msg.sender, _amount, block.timestamp);
-        inComeInfos.push(_info);
-    }
+    IUniswapV2Router02 public uniswapV2Router;
 
-    function getmemberLength(uint256 _guildNum) public view returns(uint256) {
-        return member[_guildNum].length;
-    }
-    function getguildInFosLength() public view returns(uint256) {
-        return guildInFos.length;
-    }
-    function getdeputyGuildManagerLength(uint256 _guildNum) public view returns(uint256 ) {
-        return idDeputyGuildManager[_guildNum].length;
-    }
-    function setWeth(address _weth) public onlyOwner{
+
+    constructor ( FirePassport _fp,address _reputation,address _fdt,address _weth, address _poolManager) {
+        
+        // IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(uniswapV2Router_);
+        // uniswapV2Router = _uniswapV2Router;
+        reputation = _reputation;
+        fdt = _fdt;
         weth = _weth;
+        tokenAmount = 100000000000000000;
+        AWARD_RATIO = 5;
+        PURCHASE_RATIO = 95;
+        intervals = 3600;
+        contractIntervals = 60;
+        fp = _fp;
+        poolManager = _poolManager;
     }
-    function setMAX(uint256 _max) public onlyOwner{
-        MAX = _max;
+    function setUniswapV2Router(IUniswapV2Router02 _uniswapV2Router) external  {
+        require(msg.sender == poolManager, 'no access');
+
+        uniswapV2Router = _uniswapV2Router;
     }
-    function pauseContract() public onlyOwner{
+    function setReputationAmount(uint256 _amount) external  {
+        require(msg.sender == poolManager, 'no access');
+
+        reputationAmount = _amount;
+    }
+    function setStatus() external {
+        require(msg.sender == poolManager, 'no access');
+
         status = !status;
     }
-    function setFireSoul(address _addr) public onlyOwner {
-        require(!status,"contract is pause" );
-        fireSoul = _addr;
+    function setIntervals(uint256 _time) external  {
+        require(msg.sender == poolManager, 'no access');
+
+        intervals = _time;
     }
-    function setFpAddr(address payable _address) public onlyOwner{
-        fp = FirePassport(_address);
+    function setContractIntervals(uint256 _time) external  {
+        require(msg.sender == poolManager, 'no access');
+
+        contractIntervals = _time;
+    }
+    function setTokenAmount(uint256 _amount) external  {
+        require(msg.sender == poolManager, 'no access');
+
+        tokenAmount =_amount;
+    }
+    function setAwardRatio(uint256 _ratio) external  {
+        require(msg.sender == poolManager, 'no access');
+
+        AWARD_RATIO = _ratio;
+        PURCHASE_RATIO = FEE_BASE - _ratio;
+    }
+    
+    function swapTokensForOther() public {
+        require(!status,"The contract is being maintained");
+        require(checkBalanceOfETH() > tokenAmount ,"Insufficient contract balance");
+        require(contractCall + contractIntervals < block.timestamp && userCall[msg.sender] + intervals < block.timestamp, "contract or wallet not ready");
+        require(IReputation(reputation).checkReputation(msg.sender) >= reputationAmount || userPass[msg.sender],"You don't have enough reputation points");
+        // generate the uniswap pair path of token -> weth
+		userCall[msg.sender] = block.timestamp;
+        contractCall = block.timestamp;
+        address[] memory path = new address[](2);
+        path[0] = weth;
+        path[1] = fdt ;//testnet
+        uniswapV2Router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            tokenAmount / FEE_BASE * PURCHASE_RATIO,
+            0,
+            path,
+            address(this),
+            block.timestamp
+        );
+        uint256 contractBalanceOfFDT = checkBalanceOfFDT();
+        IERC20(fdt).transfer(DEAD, contractBalanceOfFDT);
+        IERC20(weth).transfer(msg.sender, tokenAmount / FEE_BASE * AWARD_RATIO);
+        emit record(checkPid(msg.sender),
+                    checkUsername(msg.sender),
+                    IReputation(reputation).checkReputation(msg.sender),
+                    msg.sender,
+                    contractBalanceOfFDT,
+                    tokenAmount / FEE_BASE * AWARD_RATIO,
+                    block.timestamp
+                    );
+    }
+    function checkBalanceOfFDT() public view returns(uint256){
+        return IERC20(fdt).balanceOf(address(this));
+    }
+    function checkBalanceOfETH() public view returns(uint256) {
+        return IERC20(weth).balanceOf(address(this));
     }
     function checkPid(address _user) public view returns(uint256){
          (
@@ -2715,182 +2696,15 @@ contract Guild is ERC1155,Ownable {
          ) = fp.userInfo(_user);
 		return uint256(PID);
     }
-    function setReputation(address _addr) public onlyOwner {
-        require(_addr !=address(0), "invalid setting");
-        reputation = _addr;
-    }
-    function getSecondaryAdministratorsLength() public view returns(uint256) {
-        return secondaryAdministrators.length;
-    }
-    function setJoinRestrictions(uint256 _amount) public onlyOwner {
-        joinRestrictions = _amount;
-    }
-    function setBatchSecondaryAdministrator(address[] memory users) public onlyOwner{
-        for(uint256 i = 0 ; i<users.length; i++){
-            require(!isnotWhitelistUser[users[i]],"WhiteList added repeatedly");
-            require(checkRepeat(users[i]),"repeat address");
-            isnotWhitelistUser[users[i]] = true;
-            secondaryAdministrators.push(users[i]);
-        }
-    }
-    function checkRepeat(address _user) internal returns(bool){
-        for(uint256 i = 0 ; i< secondaryAdministrators.length; i++) {
-            if(secondaryAdministrators[i] == _user){
-                return false;
-            }
-        }
-        return true;
-    }
-    function deleteBatchSecondaryAdministrator(address[] memory users) public onlyOwner {
-        for(uint256 i = 0 ; i < users.length; i ++) {
-            require(isnotWhitelistUser[users[i]],"WhiteList added repeatedly");
-            isnotWhitelistUser[users[i]] = false;
-            deleteWlistArray(users[i]);
+    function checkUsername(address _user) public view returns(string memory){
+         (
+             ,
+             ,
+             string memory username,
+             ,
 
-        }
-    }
-    function deleteWlistArray(address _user) internal {
-        for(uint256 i = 0 ; i < secondaryAdministrators.length; i++) {
-            if(_user == secondaryAdministrators[i]){
-                secondaryAdministrators[i] = secondaryAdministrators[secondaryAdministrators.length -1];
-                secondaryAdministrators.pop();
-            }
-        }
-    }
-    function createGuild(string memory _guildName , string memory _logo,string memory _guildDescribe ) public {
-        require(isnotWhitelistUser[msg.sender] == true , "you not aprove");
-        _mint(msg.sender ,guildId, 1,"test" );
-        guildInFo memory info = guildInFo(_guildName,_logo,_guildDescribe,msg.sender,0);
-        memberInfo memory mInfo = memberInfo(msg.sender,checkPid(msg.sender),IFireSoul(fireSoul).checkFIDA(msg.sender),block.timestamp);
-        guildInFos.push(info);
-        guildInFoOWner[msg.sender][guildId] = guildInFos;
-        userGuildInFo[guildId] = info;
-        userGuildNum[msg.sender] = guildId;
-        isnotcreater[guildId][msg.sender] =true;
-        member[guildId].push(mInfo);
-        isNotguildManager[msg.sender] = true;
-        guildId++;
+         ) = fp.userInfo(_user);
+		return string(username);
     }
 
- 
-    function setGuildManagers(address  manager) public  {
-        require(isnotcreater[userGuildNum[msg.sender]][msg.sender] == true, "you are not manager" );
-        guildInFoOWner[msg.sender][userGuildNum[msg.sender]][userGuildNum[msg.sender]].guildManager = manager;
-        isNotguildManager[msg.sender] =true;
-    }
-    function submitApplication(uint256 num,string memory _applicationLink) public {
-        require(IReputation(reputation).checkReputation(msg.sender) >= joinRestrictions,"you cannot submit the application");
-        require(!userStatus[msg.sender],"you are queuing to apply");
-        application memory app = application({
-            GuildNum:num,
-            PID:checkPid(msg.sender),
-            FID:IFireSoul(fireSoul).checkFIDA(msg.sender),
-            applicationLink:_applicationLink,
-            applicationer:msg.sender,
-            time:block.timestamp
-        });
-        userStatus[msg.sender] =true;
-        userApplication[msg.sender] = app;
-        toBeAdded.push(msg.sender);
-    }
-   function allowJoinGuild(uint256 _userGuildNum,address _user) public {
-        require(msg.sender == userGuildInFo[_userGuildNum].guildManager || isNotdeputyGuildManager[msg.sender],"you are not a union auditor");
-        require(super.balanceOf(msg.sender,_userGuildNum) == 1,"the address is exist");
-        _mint(_user,_userGuildNum, 1 , "test");
-        userGuildNum[_user] = _userGuildNum;
-        memberInfo memory mInfo = memberInfo(_user,checkPid(_user),IFireSoul(fireSoul).checkFIDA(_user),block.timestamp);
-        member[_userGuildNum].push(mInfo);
-    }
-    function rejectedApp(uint256 _userGuildNum,address _user) public {
-        require(msg.sender == userGuildInFo[_userGuildNum].guildManager || isNotdeputyGuildManager[msg.sender],"you are not a union auditor");
-        userStatus[msg.sender] = false;
-        delete userApplication[msg.sender];
-        for(uint256 i =0 ; i< toBeAdded.length; i++){
-            if(toBeAdded[i] == _user){
-                toBeAdded[i] = toBeAdded[toBeAdded.length - 1] ;
-                toBeAdded.pop();
-            }
-        }
-    }
- 
-    function transferWeth(address _to, uint256 _amount)  public {
-        require(msg.sender == owner() || msg.sender == userGuildInFo[userGuildNum[msg.sender]].guildManager,"no access");
-        require(_amount <= MAX, "Exceeded the maximum transfer amount");
-        require(IWETH(weth).balanceOf(address(this)) > 0 , "balance of this no amount");
-        if(status){
-            require(msg.sender == owner(),"no access");
-        }
-        transferOperate memory info = transferOperate(userGuildNum[msg.sender],msg.sender, _to, _amount,block.timestamp);
-        transferOperates.push(info);
-        IWETH(weth).transfer(_to,_amount );
-    }
-    function setGuildManager(uint256 _GuildNum, address _to) public onlyOwner{
-        require(_to != address(0), "Cannot set zero address");
-        userGuildInFo[_GuildNum].guildManager = _to;
-        delete isNotguildManager[msg.sender];
-
-        isNotguildManager[_to] = true;
-    }
-    function setDeputyGuildManager(uint256 _GuildNum, address _to) public {
-        require(msg.sender == owner() || msg.sender == userGuildInFo[userGuildNum[msg.sender]].guildManager,"no access");
-        require(_to != address(0), "Cannot set zero address");
-        isNotdeputyGuildManager[_to] = true;
-        idDeputyGuildManager[_GuildNum].push(_to);
-    }
-    function deleteDeputyGuildManager(uint256 _GuildNum, address _to) public{
-        require(msg.sender == owner() || msg.sender == userGuildInFo[userGuildNum[msg.sender]].guildManager,"no access");
-        require(_to != address(0), "Cannot set zero address");
-        isNotdeputyGuildManager[_to] = false;
-        for(uint256 i = 0 ;i <idDeputyGuildManager[_GuildNum].length;i++ ){
-            if(_to == idDeputyGuildManager[_GuildNum][i]){
-                idDeputyGuildManager[_GuildNum][i] = idDeputyGuildManager[_GuildNum][idDeputyGuildManager[_GuildNum].length-1];
-                idDeputyGuildManager[_GuildNum].pop();
-            }
-        }
-        
-    }
-    function quitGuild(uint256 _GuildNum) public {
-        for(uint256 i = 0; i < member[_GuildNum].length; i ++){
-            if(msg.sender == member[_GuildNum][i].member){
-                member[_GuildNum][i] = member[_GuildNum][member[_GuildNum].length - 1];
-                member[_GuildNum].pop();
-                _burn(msg.sender, _GuildNum,1);
-            }
-        }
-        require(false,"you have not join a guild");
-    }
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes memory data
-    ) public virtual override {
-        require(from == msg.sender && to == msg.sender, "not to transfer");
-        require(
-            from == _msgSender() || isApprovedForAll(from, _msgSender()),
-            "ERC1155: caller is not token owner nor approved"
-        );
-        _safeTransferFrom(from, to, id, amount, data);
-    }
-
-    /**
-     * @dev See {IERC1155-safeBatchTransferFrom}.
-     */
-    function safeBatchTransferFrom(
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) public virtual override {
-        require(from == msg.sender && to == msg.sender, "not to transfer");
-
-        require(
-            from == _msgSender() || isApprovedForAll(from, _msgSender()),
-            "ERC1155: caller is not token owner nor approved"
-        );
-        _safeBatchTransferFrom(from, to, ids, amounts, data);
-    }
-    
 }
