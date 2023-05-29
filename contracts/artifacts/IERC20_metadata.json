@@ -1,6 +1,6 @@
 {
 	"compiler": {
-		"version": "0.8.18+commit.87f61d96"
+		"version": "0.8.14+commit.80d49f37"
 	},
 	"language": "Solidity",
 	"output": {
@@ -230,26 +230,26 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"contracts/FLM.sol": "IERC20"
+			"FireDAO-Protocol/contracts/FDT-OG.sol": "IERC20"
 		},
-		"evmVersion": "paris",
+		"evmVersion": "london",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"
 		},
 		"optimizer": {
-			"enabled": false,
+			"enabled": true,
 			"runs": 200
 		},
 		"remappings": []
 	},
 	"sources": {
-		"contracts/FLM.sol": {
-			"keccak256": "0x17692b4ba71f88454f7c78f0298df3ff273dea8c09cadfc9ae301755bfc01650",
+		"FireDAO-Protocol/contracts/FDT-OG.sol": {
+			"keccak256": "0xed8964b0e0ed9b3de438f77b66df08fce5094fcaab625f34584973c9fe59a992",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://0897623972f66bf89487eca20e47677f691e3c664fe009415ccf8d1cabb8939f",
-				"dweb:/ipfs/QmTNCGAD7s71UHu4z8NRPvgrb1gWwS1svzc1y2Vua1pZES"
+				"bzz-raw://5fd0e205b95ac958795efa17b374327faf55b4bc3443e22cfbf0e54aa8bb7929",
+				"dweb:/ipfs/QmYgvmmBwoyUdR3V2pgEku2GftydXKhm6vmw13zRWAfA95"
 			]
 		}
 	},

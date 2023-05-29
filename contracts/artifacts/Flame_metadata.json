@@ -1,6 +1,6 @@
 {
 	"compiler": {
-		"version": "0.8.18+commit.87f61d96"
+		"version": "0.8.14+commit.80d49f37"
 	},
 	"language": "Solidity",
 	"output": {
@@ -282,14 +282,6 @@
 			}
 		],
 		"devdoc": {
-			"events": {
-				"Approval(address,address,uint256)": {
-					"details": "Emitted when the allowance of a `spender` for an `owner` is set by a call to {approve}. `value` is the new allowance."
-				},
-				"Transfer(address,address,uint256)": {
-					"details": "Emitted when `value` tokens are moved from one account (`from`) to another (`to`). Note that `value` may be zero."
-				}
-			},
 			"kind": "dev",
 			"methods": {
 				"allowance(address,address)": {
@@ -336,21 +328,21 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"contracts/FLM.sol": "FLAME"
+			"FireDAO-Protocol/contracts/FLM.sol": "FLAME"
 		},
-		"evmVersion": "paris",
+		"evmVersion": "london",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"
 		},
 		"optimizer": {
-			"enabled": false,
+			"enabled": true,
 			"runs": 200
 		},
 		"remappings": []
 	},
 	"sources": {
-		"contracts/FLM.sol": {
+		"FireDAO-Protocol/contracts/FLM.sol": {
 			"keccak256": "0x17692b4ba71f88454f7c78f0298df3ff273dea8c09cadfc9ae301755bfc01650",
 			"license": "MIT",
 			"urls": [

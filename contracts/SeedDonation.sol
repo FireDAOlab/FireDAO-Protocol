@@ -26,9 +26,9 @@ contract SeedDonation is Ownable,Pausable{
     address public FDTLiquity;
     address public Treasury;
     uint public round = 1;
-    uint public currentPrice = 10000;
-    uint public currentRemaining = 5000000e18;
-    uint public roundAmount = 5000000e18;
+    uint public currentPrice = 1e16;
+    uint public currentRemaining = 5000000e18; //5000000e18
+    uint public roundAmount = 5000000e18; //5000000e18
     uint public intervalBlock = 3; //arb 3 s
     uint public PIDDiscount = 96;
     uint public FIDDiscount = 92;
@@ -77,6 +77,7 @@ contract SeedDonation is Ownable,Pausable{
     }
     
     function donation() payable external  whenNotPaused{
+        require(round<=100,"Seed donation has ended");
         _checkDonationAmount(msg.value);
         bool hasFID = FireSoul.balanceOf(msg.sender) > 0 ? true : false;
         bool hasPID = FirePassport.balanceOf(msg.sender) > 0 ? true : false;
@@ -88,18 +89,18 @@ contract SeedDonation is Ownable,Pausable{
         }else{
             buyPrice = currentPrice;
         }
-        uint rewardAmount = msg.value.mul(getLastPrice().div(100)).div(buyPrice);
+        uint rewardAmount = msg.value.mul(getLastPrice()).div(buyPrice);
         uint[] memory prices = new uint[](2);
         uint[] memory amounts = new uint[](2);
         lockDetail storage detail =  userLock[msg.sender];
-        if (currentRemaining < rewardAmount){
-            uint firstETHAmount = currentRemaining.mul(buyPrice);
-            uint rewardAmountNext = (msg.value.sub(firstETHAmount)).mul(getLastPrice().div(100)).div(buyPrice + 10000);
+         uint firstETHAmount = currentRemaining.mul(buyPrice).div(getLastPrice());
+        if (firstETHAmount < msg.value){
+            uint rewardAmountNext = (msg.value.sub(firstETHAmount)).mul(getLastPrice()).div(buyPrice + 1e16);
             uint allReward = currentRemaining.add(rewardAmountNext);
             round+=1;
             prices[0] = buyPrice;
-            prices[1] = buyPrice + 10000;
-            currentPrice+=10000;
+            prices[1] = buyPrice + 1e16;
+            currentPrice+=1e16;
             amounts[0] = currentRemaining;
             amounts[1] = rewardAmountNext;
             currentRemaining = roundAmount.sub(rewardAmountNext);
@@ -132,30 +133,30 @@ contract SeedDonation is Ownable,Pausable{
               SBT001.mint(msg.sender,lockAmount);
            }
         }
-        IWETH(WETH).deposit{value: msg.value}();
+        WETH.deposit{value: msg.value}();
         address topReference = FireSeed.upclass(msg.sender);
         uint referenceReward = msg.value.mul(ReferenceRatio).div(100);
         uint FDTLiquityReward = msg.value.mul(FDTLiquityRatio).div(100);
         uint TreasuryReward = msg.value.mul(TreasuryRatio).div(100);
         if(topReference!=address(0)){
-              IWETH(WETH).transfer(topReference,referenceReward.mul(70).div(100));
+              WETH.transfer(topReference,referenceReward.mul(70).div(100));
               address middleReference = FireSeed.upclass(topReference);
               if (middleReference!=address(0)){
-                 IWETH(WETH).transfer(topReference,referenceReward.mul(20).div(100));
+                 WETH.transfer(topReference,referenceReward.mul(20).div(100));
                  address bottomReference = FireSeed.upclass(middleReference);
                  if (bottomReference != address(0)) {
-                    IWETH(WETH).transfer(bottomReference,referenceReward.mul(10).div(100));
+                    WETH.transfer(bottomReference,referenceReward.mul(10).div(100));
                  }else{
-                    IWETH(WETH).transfer(Treasury,referenceReward.mul(10).div(100));
+                    WETH.transfer(Treasury,referenceReward.mul(10).div(100));
                  }
               }else{
-                IWETH(WETH).transfer(Treasury,referenceReward.mul(30).div(100));
+                WETH.transfer(Treasury,referenceReward.mul(30).div(100));
               }
         }else{
-          IWETH(WETH).transfer(Treasury,referenceReward);
+          WETH.transfer(Treasury,referenceReward);
         }
-        IWETH(WETH).transfer(FDTLiquity,FDTLiquityReward);
-        IWETH(WETH).transfer(Treasury,TreasuryReward);
+        WETH.transfer(FDTLiquity,FDTLiquityReward);
+        WETH.transfer(Treasury,TreasuryReward);
         emit Donation(msg.sender, msg.value, amounts, prices);
     }
 
@@ -186,16 +187,16 @@ contract SeedDonation is Ownable,Pausable{
         }else{
             buyPrice = currentPrice;
         }
-        uint rewardAmount = _amount.mul(getLastPrice().div(100)).div(buyPrice);
-          if (currentRemaining < rewardAmount){
-            uint firstETHAmount = currentRemaining.mul(buyPrice);
-            uint rewardAmountNext = (_amount.sub(firstETHAmount)).mul(getLastPrice().div(100)).div(buyPrice + 10000);
+        uint firstETHAmount = currentRemaining.mul(buyPrice).div(getLastPrice());
+        if(firstETHAmount < _amount){
+            uint rewardAmountNext = (_amount.sub(firstETHAmount)).mul(getLastPrice()).div(buyPrice + 1e16);
             uint allReward = currentRemaining.add(rewardAmountNext);
             return allReward;
-          }else{
-            return rewardAmount;
-          }
+        }else{
+            return _amount.mul(getLastPrice()).div(buyPrice);    
+        }
     }
+
     function getLastPrice() public view returns(uint){
           (
             ,
@@ -203,7 +204,7 @@ contract SeedDonation is Ownable,Pausable{
             ,
             ,
         ) = priceFeed.latestRoundData();
-        return uint(price);
+        return uint(price).mul(10000000000);
     }
     function _checkDonationAmount(uint _amount) internal pure{
         require(_amount>=1e17 && _amount <= 2e18,"The quantity does not meet the requirements");
