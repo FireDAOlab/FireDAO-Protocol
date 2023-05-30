@@ -6,10 +6,11 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interface/ISbt001.sol";
 import "./interface/IFireSeed.sol";
 import "./interface/IWETH.sol";
-contract SeedDonation is Ownable,Pausable{
+contract SeedDonation is Ownable,Pausable,ReentrancyGuard{
     using SafeMath for uint256;
     struct lockDetail{
         uint startBlock;
@@ -75,8 +76,8 @@ contract SeedDonation is Ownable,Pausable{
     function changeReferenceRatio(uint _ratio) external onlyOwner {
         ReferenceRatio = _ratio;
     }
-    
-    function donation() payable external  whenNotPaused{
+
+    function donation() payable external  whenNotPaused nonReentrant{
         require(round<=100,"Seed donation has ended");
         _checkDonationAmount(msg.value);
         bool hasFID = FireSoul.balanceOf(msg.sender) > 0 ? true : false;
@@ -160,9 +161,9 @@ contract SeedDonation is Ownable,Pausable{
         emit Donation(msg.sender, msg.value, amounts, prices);
     }
 
-    function claim() external {
+    function claim() external nonReentrant{
         uint amount = getClaimAmount();
-        require(userLock[msg.sender].amount<=amount,"Not enough quantity");
+        require(userLock[msg.sender].amount>=amount,"Not enough quantity");
         require(FDT.balanceOf(address(this)) >= amount,"Insufficient quantity in the pool");
         FDT.transfer(msg.sender, amount);
         userLock[msg.sender].amount = userLock[msg.sender].amount.sub(amount);
@@ -174,8 +175,8 @@ contract SeedDonation is Ownable,Pausable{
         // uint blockReward = intervalBlock.mul(userLock[msg.sender].amount).div(ONE_YEAR);
         return (block.number.sub(userLock[msg.sender].startBlock)).mul(blockReward);
     }
-    
-    //todo  
+
+    //todo
     function getRewardAmount(uint _amount) external view returns(uint){
         bool hasFID = FireSoul.balanceOf(msg.sender) > 0 ? true : false;
         bool hasPID = FirePassport.balanceOf(msg.sender) > 0 ? true : false;
@@ -193,7 +194,7 @@ contract SeedDonation is Ownable,Pausable{
             uint allReward = currentRemaining.add(rewardAmountNext);
             return allReward;
         }else{
-            return _amount.mul(getLastPrice()).div(buyPrice);    
+            return _amount.mul(getLastPrice()).div(buyPrice);
         }
     }
 
@@ -205,6 +206,12 @@ contract SeedDonation is Ownable,Pausable{
             ,
         ) = priceFeed.latestRoundData();
         return uint(price).mul(10000000000);
+    }
+    function pause() external onlyOwner {
+         _pause();
+    }
+    function unpause() external onlyOwner {
+         _unpause();
     }
     function _checkDonationAmount(uint _amount) internal pure{
         require(_amount>=1e17 && _amount <= 2e18,"The quantity does not meet the requirements");
