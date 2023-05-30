@@ -69,7 +69,11 @@
 			"bytecodeHash": "ipfs"
 		},
 		"optimizer": {
+<<<<<<< HEAD
 			"enabled": false,
+=======
+			"enabled": true,
+>>>>>>> 2bcf5d017a4b2c019563edbbc3182976b8c52dc6
 			"runs": 200
 		},
 		"remappings": []
@@ -92,6 +96,7 @@
 			]
 		},
 		"contracts/FireSoul.sol": {
+<<<<<<< HEAD
 			"keccak256": "0x593ede35fdac134c3b08e1e1a24c27ae7ce62a2bce1bd9eccd8e159974c87dcb",
 			"license": "MIT",
 			"urls": [
@@ -129,6 +134,45 @@
 			"urls": [
 				"bzz-raw://18a771d4fa2474df4052e68a2ad15c2775d46b0ca561ab1fc2e090ee661b2377",
 				"dweb:/ipfs/Qmew2pYfmCMTNv3QhkHeCXESTVC7XLzEf7cjgVcjmoriJW"
+=======
+			"keccak256": "0x6d5bf1d22c46fa093399dc3e9a14691dca16b77245df76a490d92c69987fb632",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://986587bd4f66136f9aa2c558189bf2fd0279cfffddc7c0b89708cc3bb0092128",
+				"dweb:/ipfs/QmXzN3NiAa64KTMnM8mgWRjvrdcoasBfyTgNs3EmxvmrSS"
+			]
+		},
+		"contracts/interface/IFireSeed.sol": {
+			"keccak256": "0x50486dd34931928e2d37ff137a8cfb03413ee54b62e04e9692a440b24b51d6a7",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://37881d2de2f40f91c05bf947e3101f3ffedec920d688a125e66f033ec5dae069",
+				"dweb:/ipfs/QmcLvMCKEpeZz6viY94eN1bdrLLSLcB7L3EsB5Ly1vvbCd"
+			]
+		},
+		"contracts/interface/ISbt003.sol": {
+			"keccak256": "0x26f730b273e3821f4976fbfb3e8126c6024e74008289e6f1a8b848e2a3745538",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://67ea7e2011a5b43d4e3e84cdcbf0779cae1fb5d576bde56f487fa8ff6c5fe227",
+				"dweb:/ipfs/QmerrGG8wMZvWpnuaNXSX7o45JYTdsH7tqGnHg811sqAyG"
+			]
+		},
+		"contracts/interface/IWETH.sol": {
+			"keccak256": "0xe839aec3aba871f2cfba556079aad58394e3f93bdb6b511f2a4c48006962267b",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://c16d15a1077b2846bfa3066cdad6685a7e71d83533401df8333fa10549df1219",
+				"dweb:/ipfs/Qmdgzi7ijCtfFUmTtZwHNZdDAVj45V2N9zybbFrovERBZU"
+			]
+		},
+		"contracts/lib/TransferHelper.sol": {
+			"keccak256": "0xf1d71350584d577cff628f0aac7a7ce4eaf0b7f25759448099288575183da807",
+			"license": "GPL-3.0-or-later",
+			"urls": [
+				"bzz-raw://df99373e094561adc81e27aa305abcde1305454810f69587518bd738cc014572",
+				"dweb:/ipfs/QmQ7sFubdStHJEVDtESXyt2xU6btvemKRTXJ74EJgZS2rr"
+>>>>>>> 2bcf5d017a4b2c019563edbbc3182976b8c52dc6
 			]
 		}
 	},

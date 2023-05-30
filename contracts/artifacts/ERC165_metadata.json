@@ -43,7 +43,11 @@
 	},
 	"settings": {
 		"compilationTarget": {
+<<<<<<< HEAD
 			"contracts/FireSoul.sol": "ERC165"
+=======
+			"contracts/Guild_flattened.sol": "ERC165"
+>>>>>>> 2bcf5d017a4b2c019563edbbc3182976b8c52dc6
 		},
 		"evmVersion": "paris",
 		"libraries": {},
@@ -51,12 +55,17 @@
 			"bytecodeHash": "ipfs"
 		},
 		"optimizer": {
+<<<<<<< HEAD
 			"enabled": false,
+=======
+			"enabled": true,
+>>>>>>> 2bcf5d017a4b2c019563edbbc3182976b8c52dc6
 			"runs": 200
 		},
 		"remappings": []
 	},
 	"sources": {
+<<<<<<< HEAD
 		"@openzeppelin/contracts/utils/Strings.sol": {
 			"keccak256": "0xa4d1d62251f8574deb032a35fc948386a9b4de74b812d4f545a1ac120486b48a",
 			"license": "MIT",
@@ -111,6 +120,14 @@
 			"urls": [
 				"bzz-raw://18a771d4fa2474df4052e68a2ad15c2775d46b0ca561ab1fc2e090ee661b2377",
 				"dweb:/ipfs/Qmew2pYfmCMTNv3QhkHeCXESTVC7XLzEf7cjgVcjmoriJW"
+=======
+		"contracts/Guild_flattened.sol": {
+			"keccak256": "0x0db4ec46eea51d7b491f3fa0fb5c2e111dc7ff74985d02e4b83935040a7709ea",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://4887b7e7848f9b10a6f6fa428171d5682b82ee7bbab05176455e256da3097343",
+				"dweb:/ipfs/QmUhT29KE9wbiMLAq12BASP2hRhww1kygBk84MjhGf4e4d"
+>>>>>>> 2bcf5d017a4b2c019563edbbc3182976b8c52dc6
 			]
 		}
 	},

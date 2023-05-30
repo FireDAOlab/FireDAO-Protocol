@@ -1,6 +1,10 @@
 {
 	"compiler": {
+<<<<<<< HEAD
 		"version": "0.8.14+commit.80d49f37"
+=======
+		"version": "0.8.17+commit.8df45f5f"
+>>>>>>> 2bcf5d017a4b2c019563edbbc3182976b8c52dc6
 	},
 	"language": "Solidity",
 	"output": {
@@ -230,7 +234,11 @@
 	},
 	"settings": {
 		"compilationTarget": {
+<<<<<<< HEAD
 			"FireDAO-Protocol/contracts/FDT-OG.sol": "IERC20"
+=======
+			"contracts/ogVersionA.sol": "IERC20"
+>>>>>>> 2bcf5d017a4b2c019563edbbc3182976b8c52dc6
 		},
 		"evmVersion": "london",
 		"libraries": {},
@@ -244,12 +252,21 @@
 		"remappings": []
 	},
 	"sources": {
+<<<<<<< HEAD
 		"FireDAO-Protocol/contracts/FDT-OG.sol": {
 			"keccak256": "0xed8964b0e0ed9b3de438f77b66df08fce5094fcaab625f34584973c9fe59a992",
 			"license": "MIT",
 			"urls": [
 				"bzz-raw://5fd0e205b95ac958795efa17b374327faf55b4bc3443e22cfbf0e54aa8bb7929",
 				"dweb:/ipfs/QmYgvmmBwoyUdR3V2pgEku2GftydXKhm6vmw13zRWAfA95"
+=======
+		"contracts/ogVersionA.sol": {
+			"keccak256": "0x5695a8b11bdc7b7f0cc6972dd83b6f50c73deed5cb900558ad1af26ddf5ae206",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://416c08b20d7bb82f28a8e5fbadfe4d4bbfc87c20c0b6d372b88e5ea9a620a6b8",
+				"dweb:/ipfs/QmQGAqjj6y5x1ztvr9dUgGFcKjdyT8cFWQb9fMa8rBUdEU"
+>>>>>>> 2bcf5d017a4b2c019563edbbc3182976b8c52dc6
 			]
 		}
 	},
