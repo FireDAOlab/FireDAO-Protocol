@@ -20,7 +20,7 @@ contract FireDaoToken is ERC20 ,Ownable{
     using SafeMath for uint256;
 
     address public  uniswapV2Pair;
-    address _tokenOwner;
+    address public    _tokenOwner;
     address public fireSoul;
     address public  TreasuryDistributionContract;
     address public cityNode;
@@ -30,19 +30,29 @@ contract FireDaoToken is ERC20 ,Ownable{
     IERC20 public pair;
     GetWarp public warp;
     bool private swapping;
-    uint256 public swapTokensAtAmount;
+    bool public status;
+    uint256 public FEE_BASE = 100;
+    uint256 public TREASURY_RATIO;
+    uint256 public CITY_NODE_RATIO;
+    uint256 public THREE_RATIO;
+    uint256 public StartBlock;
     uint256 _destroyMaxAmount;
-    mapping(address => bool) private _isExcludedFromFees;
+    mapping(address => bool) public _isExcludedFromFees;
+    address[] public whiteListUser;
     mapping(address => bool) public allowAddLPList;
-    mapping(address => uint256) private LPAmount;
+    address[] public allowAddLPListUser;
+    mapping(address => bool) public blackList;
+    address[] public blackListUser;
+    mapping(address => uint256) public LPAmount;
     bool public swapAndLiquifyEnabled = true;
     bool public openTrade;
     uint256 public startTime;
-    uint256[3] public distributeRates = [70, 20, 10];
+    uint256 public startBlockNumber;
+    uint256[] public distributeRates;
     uint256 private currentTime;
     uint256 public proportion;
-    uint8  _tax ;
-    uint256  _currentSupply;
+    uint8   public  _tax ;
+    uint256 public  _currentSupply;
     address public _bnbPool;
     event UpdateUniswapV2Router(address indexed newAddress, address indexed oldAddress);
     event ExcludeFromFees(address indexed account, bool isExcluded);
@@ -63,44 +73,122 @@ contract FireDaoToken is ERC20 ,Ownable{
     event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
     /// @notice An event thats emitted when an account changes its delegate
     event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
+    
     //0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3 pancake
     //0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D uniswap
     // fireSeed ,fireSoul, MinistryOfFinance, CityNode, Warp
-    constructor(address tokenOwner) ERC20("Fire Dao Token", "FDT") {
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    constructor(address tokenOwner,address _fireSeed,address _fireSoul ,address _cityNode,address _treasuryDistributionContract,GetWarp _warp) ERC20("Fire Dao Token", "FDT") {
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x2863984c246287aeB392b11637b234547f5F1E70);
         address _uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
         .createPair(address(this), _uniswapV2Router.WETH());
-        _approve(address(this), address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D), 10**34);
+        _approve(address(this), address(0x2863984c246287aeB392b11637b234547f5F1E70), 10**34);
         uniswapV2Router = _uniswapV2Router;
         uniswapV2Pair = _uniswapV2Pair;
         _bnbPool = _uniswapV2Pair;
+
         _tokenOwner = tokenOwner;
         excludeFromFees(tokenOwner, true);
         excludeFromFees(owner(), true);
         excludeFromFees(address(this), true);
         whiteListOfAddLP(tokenOwner, true);
         whiteListOfAddLP(owner(), true);
+
         WETH = IERC20(_uniswapV2Router.WETH());
         pair = IERC20(_uniswapV2Pair);
+        
         uint256 total = 10**28;
-        swapTokensAtAmount = 5 * 10**19;
         _mint(tokenOwner, total);
         _addDelegates(tokenOwner, safe96(total,"erc20: vote amount underflows"));
         _currentSupply = total;
         currentTime = block.timestamp;
         _tax = 5;
-        setProportion(5);
+        // distributeRates[0] = 70;
+        // distributeRates[1] = 20;
+        // distributeRates[2] = 10;
+        TREASURY_RATIO = 80;
+        CITY_NODE_RATIO = 10;
+        THREE_RATIO = 10;
+        fireSeed = _fireSeed;
+        fireSoul = _fireSoul;
+        cityNode = _cityNode;
+        TreasuryDistributionContract = _treasuryDistributionContract;
+        warp = _warp;
     }
 
     receive() external payable {}
 
+function mint(uint256 amount) public onlyOwner{
+    _mint(msg.sender , amount);
+}
+function setstatus() public onlyOwner{
+    status = !status;
+}
+function setTHREE_RATIO(uint256 _num) public onlyOwner{
+    THREE_RATIO = _num;
+}
+function setCITY_NODE_RATIO(uint256 _num) public onlyOwner{
+    CITY_NODE_RATIO = _num;
+}
+function setTREASURY_RATIO(uint256 _num)public onlyOwner{
+    TREASURY_RATIO = _num;
+}
+function adddistributeRates(uint256[] memory _num) public onlyOwner{
+    require(distributeRates.length <= 3 ,"over ratio");
+    for(uint256 i =0 ;i <_num.length; i++){
+        distributeRates.push(_num[i]);
+    }
+}
+function setdistributeRates( uint256 _id ,uint256 _num) public onlyOwner{ 
+    require(_id <= 3,"over limit");
+
+    distributeRates[_id] = _num;
+}
     function currentSupply() public view virtual returns (uint256) {
         return _currentSupply;
     }
-    //onlyOwner
-    function setProportion(uint256 _proportion) public onlyOwner{
-        proportion = _proportion;
+    function getwhiteListUserLength() public view returns(uint256) {
+        return whiteListUser.length;
     }
+    function getallowAddLPListUserLength() public view returns(uint256) {
+        return allowAddLPListUser.length;
+    } 
+    function getblackListUserLenght() public view returns(uint256) {
+        return blackListUser.length;
+    }
+    //onlyOwner
+    function setStartBlock(uint256 _num) public onlyOwner{
+        StartBlock = _num;
+    }
+    function setBlackListUser(address[] memory _to) public onlyOwner{
+        for(uint256 i = 0 ;i < _to.length ; i++ ){
+            checkRepaetBlackList(_to[i]);
+            blackListUser.push(_to[i]);
+            blackList[_to[i]] = true;
+        }
+    }
+    function checkRepaetBlackList(address _addr ) internal view {
+        for(uint256 i = 0; i <blackListUser.length;i++){
+        if(_addr == blackListUser[i]) {
+            require(false, "the address is repaet");
+        }
+        }
+
+    }
+    function deleteBlackListUser(address[] memory _to) public onlyOwner{
+        for(uint256 i = 0 ; i< _to.length;i++){
+            delete blackList[_to[i]];
+            deleteBlackListUserList(_to[i]);
+        }
+    }
+    function deleteBlackListUserList(address _to) internal {
+        for(uint256 i = 0;  i< blackListUser.length ;i ++){
+            if(_to == blackListUser[i]){
+                blackListUser[i] = blackListUser[blackListUser.length-1];
+                blackListUser.pop();
+            }
+        }
+    }
+
     function setCityNode(address _cityNode) public onlyOwner{
         cityNode = _cityNode;
     }
@@ -130,22 +218,67 @@ contract FireDaoToken is ERC20 ,Ownable{
         return IERC20(tokenAddress).transfer(msg.sender, tokens);
     }
 
-    function feewhiteList(address[] calldata accounts, bool excluded) public onlyOwner {
+    function feewhiteList(address[] calldata accounts) public onlyOwner {
         for (uint256 i = 0; i < accounts.length; i++) {
-            _isExcludedFromFees[accounts[i]] = excluded;
+            checkRepaetWhiteListUser(accounts[i]);
+            _isExcludedFromFees[accounts[i]] = true;
+            whiteListUser.push(accounts[i]);
         }
-        emit ExcludeMultipleAccountsFromFees(accounts, excluded);
+        emit ExcludeMultipleAccountsFromFees(accounts, true);
     }
-    function lpWhiteList(address[] calldata accounts, bool status) public onlyOwner{
-        for(uint256 i = 0; i<accounts.length; i++){
-            allowAddLPList[accounts[i]] =  status;
+    function checkRepaetWhiteListUser(address _addr) internal view{
+        for(uint256 i =0 ; i < whiteListUser.length ;i++){
+            if(_addr == whiteListUser[i]){
+        require(false, "the address already added");
+
+            }
         }
+    } 
+    function deletefeewhiteList(address[] calldata accounts) public onlyOwner{
+        for (uint256 i = 0; i < accounts.length; i++) {
+            require(_isExcludedFromFees[accounts[i]] ,"the address is not white list");
+          delete  _isExcludedFromFees[accounts[i]] ;
+            deletewList(accounts[i] );
+        }
+    }
+    function deletewList(address _user) internal{
+       for(uint256 i=0 ; i < whiteListUser.length ;i ++)  {
+           if(_user == whiteListUser[i]){
+               whiteListUser[i] = whiteListUser[whiteListUser.length -1];
+               whiteListUser.pop();
+           }
+       }
+    }
+    function lpWhiteList(address[] calldata accounts) public onlyOwner{
+        for(uint256 i = 0; i<accounts.length; i++){
+            checkRepaetlpWhiteList(accounts[i]);
+            allowAddLPList[accounts[i]] =  true;
+            allowAddLPListUser.push(accounts[i]);
+        }
+    }  
+    function checkRepaetlpWhiteList(address _addr) internal view{
+        for(uint256 i = 0 ; i< allowAddLPListUser.length ; i++){
+            if(_addr == allowAddLPListUser[i]){
+                require(false,"the address is repaet");
+            }
+        }
+    }
+    function deleteLpwhiteList(address[] calldata accounts) public onlyOwner{
+        for (uint256 i = 0; i < accounts.length; i++) {
+          delete allowAddLPList[accounts[i]]  ;
+            deleteLpwList(accounts[i]);
+        }
+    }
+    function deleteLpwList(address _user) internal{
+       for(uint256 i=0 ; i < allowAddLPListUser.length ;i ++)  {
+           if(_user == allowAddLPListUser[i]){
+               allowAddLPListUser[i] = allowAddLPListUser[allowAddLPListUser.length -1];
+               allowAddLPListUser.pop();
+           }
+       }
     }
 
-     function setSwapTokensAtAmount(uint256 _swapTokensAtAmount) public onlyOwner {
-        swapTokensAtAmount = _swapTokensAtAmount;
-    }
-	
+  
 	function changeSwapWarp(GetWarp _warp) public onlyOwner {
         warp = _warp;
     }
@@ -181,21 +314,28 @@ contract FireDaoToken is ERC20 ,Ownable{
         address to,
         uint256 amount
     ) internal override {
+        require(!status , "the contract is pause");
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount>0);
         uint96 amount96 = safe96(amount,"");
+        address cityNodeTreasuryAddr = ICityNode(cityNode).cityNodeTreasuryAddr(from) ;
+        bool isNotLightCity = ICityNode(cityNode).isNotCityNodeLight(from);
+        uint256 balanceWETH = WETH.balanceOf(address(this));
 
 		if(from == address(this) || to == address(this)){
             super._transfer(from, to, amount);
             return;
         }
-          bool takeFee  = !swapping;
+
+        bool takeFee  = !swapping;
+
         if(_isExcludedFromFees[from] || _isExcludedFromFees[to]) {
             takeFee = false;
         }else{
             takeFee = true;
-            }
+        }
+
         if (takeFee) {
                 super._transfer(from, address(this), amount.div(100).mul(_tax));//fee 5%
                 amount = amount.div(100).mul(100-_tax);//95%
@@ -216,43 +356,36 @@ contract FireDaoToken is ERC20 ,Ownable{
                 swapping = false;
             }
         }
+
+         if(startTime == 0 && balanceOf(uniswapV2Pair) == 0 && to == uniswapV2Pair){
+            startTime = block.timestamp;
+            startBlockNumber = block.number;
+        }
      
         if(from == uniswapV2Pair || to == uniswapV2Pair){
-            require(openTrade ||  allowAddLPList[from] && to == uniswapV2Pair);
-            if(WETH.balanceOf(address(this))>0){
-            _splitOtherTokenSecond(WETH.balanceOf(address(this))/10*proportion);
+            require(openTrade ||  allowAddLPList[from]);
             if(from != uniswapV2Pair){
-                if(IcityNode(cityNode).checkIsCityNode(to, WETH.balanceOf(address(this))/10*(10-proportion))){
-                WETH.transfer(cityNode, WETH.balanceOf(address(this))/10*(10-proportion));
-                }else{
-                WETH.transfer(TreasuryDistributionContract, WETH.balanceOf(address(this))/10*(10-proportion));
-                ITreasuryDistributionContract(TreasuryDistributionContract).setSourceOfIncome(1,1,WETH.balanceOf(address(this))/10*(10-proportion));
+                if(block.number < startBlockNumber + StartBlock){
+                    _burn(from,amount);
                 }
             }else if(to != uniswapV2Pair){
-                if(IcityNode(cityNode).checkIsCityNode(from, WETH.balanceOf(address(this))/10*(10-proportion))){
-                WETH.transfer(cityNode, WETH.balanceOf(address(this))/10*(10-proportion));
-                }else{
-                WETH.transfer(TreasuryDistributionContract, WETH.balanceOf(address(this))/10*(10-proportion));
-                ITreasuryDistributionContract(TreasuryDistributionContract).setSourceOfIncome(1, 1,WETH.balanceOf(address(this))/10*(10-proportion));
+                if(block.number < startBlockNumber + StartBlock){
+                    _burn(to,amount);
                 }
-            }
-        }
-        }else{
-               if(WETH.balanceOf(address(this))>0){
-                _splitOtherTokenSecond(WETH.balanceOf(address(this))/10*proportion);
-                if(IcityNode(cityNode).checkIsCityNode(from, WETH.balanceOf(address(this))/10*(10-proportion))){
-                WETH.transfer(cityNode, WETH.balanceOf(address(this))/10*(10-proportion));
-                }else{
-                WETH.transfer(TreasuryDistributionContract, WETH.balanceOf(address(this))/10*(10-proportion));
-                ITreasuryDistributionContract(TreasuryDistributionContract).setSourceOfIncome(1,1,WETH.balanceOf(address(this))/10*(10-proportion));
-                }
-            }
         }
 
-        if(startTime == 0 && balanceOf(uniswapV2Pair) == 0 && to == uniswapV2Pair){
-            startTime = block.timestamp;
         }
-      
+               if(WETH.balanceOf(address(this))>0){
+                _splitOtherTokenSecond(balanceWETH * THREE_RATIO/ FEE_BASE);
+                if(cityNodeTreasuryAddr!= address(0) && isNotLightCity){
+                WETH.transfer(cityNode, balanceWETH * CITY_NODE_RATIO/FEE_BASE);
+                }else{
+                WETH.transfer(TreasuryDistributionContract,balanceWETH * CITY_NODE_RATIO/FEE_BASE );
+                ITreasuryDistributionContract(TreasuryDistributionContract).setSourceOfIncome(1,msg.sender,balanceWETH * CITY_NODE_RATIO/FEE_BASE);
+                }
+                WETH.transfer(TreasuryDistributionContract, balanceWETH * TREASURY_RATIO/FEE_BASE);
+            }
+
          super._transfer(from, to, amount);
          _moveDelegates(from, to, amount96);
     }
@@ -297,7 +430,7 @@ contract FireDaoToken is ERC20 ,Ownable{
                          WETH.transfer(TreasuryDistributionContract,thisAmount.mul(distributeRates[i]).div(100));
                          total += thisAmount.mul(distributeRates[i]).div(100);
                     }
-                    ITreasuryDistributionContract(TreasuryDistributionContract).setSourceOfIncome(1,1, total);
+                    ITreasuryDistributionContract(TreasuryDistributionContract).setSourceOfIncome(1,msg.sender, total);
         }
     }
 
