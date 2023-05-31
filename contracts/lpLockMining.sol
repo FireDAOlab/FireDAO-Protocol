@@ -3253,18 +3253,20 @@ import './lib/SafeMath.sol';
 contract LpLockMining is Ownable {
      using SafeMath for uint256;
     
-    struct Record {
-        uint256 pid;
-        string username;
-        uint256 fid;
+    struct lockDetails {
         address user;
         uint256 lpAmount;
         uint256 period;
         uint256 weightCoefficient;
         uint256 startTime;
+        uint256 endTime;
+        uint256 sbt001Amount;
+        uint256 sbt005Amount;
     }
     event adminTransferRecord(uint256 pid, string username, uint256 fid,address user, uint256 amount, uint256 rewardCycle, uint256 time);
     event depositRecord(uint256 pid, string name , uint256 fid , address user, uint256 lpAmount,uint256 period,uint256 weightCoefficient, uint256 yield, uint256 time);
+    event userClaimFlm(uint256 pid, string name , uint256 fid , address user, uint256 flmAmount,uint256 time);
+    event extractLpRecord(uint256 pid, string name , uint256 fid , address user, uint256 lpAmount,uint256 time);
     FirePassport public fp;
     IUniswapV2Pair public  uniswapV2Pair;
     address public Pool;
@@ -3272,7 +3274,7 @@ contract LpLockMining is Ownable {
     uint256 immutable public ONE_MONTH = 2592000;
     uint256 immutable public ONE_BLOCK = 4;
     uint256 immutable public REMOVE_ZERO = 10 ** 18;
-
+    uint256 public tPuls;
     uint256 public ratioAmount;
     uint256 public FLM_AMOUNT;
     uint256 public REWARD_CYCLE;
@@ -3282,9 +3284,10 @@ contract LpLockMining is Ownable {
     address public weth;
     address public sbt001;
     address public sbt005;
-    mapping(address => Record[]) public userRecord; 
+    mapping(address => lockDetails[]) public userlockDetails; 
     mapping(uint256 => uint256) public Weights;
     mapping(address => bool) public userStatus;
+    mapping(address => uint256) public isNotActivation;
 	AggregatorV3Interface internal priceFeed;
     /**
     * Network: Mumbai Testnet
@@ -3314,9 +3317,13 @@ contract LpLockMining is Ownable {
         Weights[36] = 7;
         sbt001 = _sbt001;
         sbt005 = _sbt005;
+        tPuls = 86400;
     }
-    function getuserRecordLength(address _user) public view returns(uint256) {
-        return userRecord[_user].length;
+    function setTpuls(uint256 _tPuls) public onlyOwner{
+        tPuls = _tPuls;
+    }
+    function getuserlockDetailsLength(address _user) public view returns(uint256) {
+        return userlockDetails[_user].length;
     }
     function getLatesPrice() public view returns (uint256) {
 		(
@@ -3347,6 +3354,7 @@ contract LpLockMining is Ownable {
         emit adminTransferRecord(checkPid(msg.sender), checkUsername(msg.sender),IFireSoul(fireSoul).checkFIDA(msg.sender), msg.sender,FLM_AMOUNT,REWARD_CYCLE,block.timestamp);
     }
     function activateExtraction() public {
+        require(block.timestamp >= isNotActivation[msg.sender],'Insufficient unlock time');
         userStatus[msg.sender] = true;
     }
     function oneBlockAward() public view returns(uint256) {
@@ -3385,6 +3393,19 @@ contract LpLockMining is Ownable {
             ISbt001(sbt001).mint(receiver, amount0 * Weights[_several]);
             ISbt005(sbt005).mint(receiver, amount1);
             TransferHelper.safeTransferFrom(Pool,msg.sender,address(this),_LPAmount);
+            isNotActivation[msg.sender] = block.timestamp + tPuls ;
+            lockDetails memory details = lockDetails
+            (
+                msg.sender,
+                _LPAmount,
+                _several,
+                Weights[_several],
+                block.timestamp,
+                block.timestamp + _several * ONE_MONTH,
+                amount0 * Weights[_several],
+                amount1
+            );
+            userlockDetails[msg.sender].push(details);
             emit depositRecord(
                 checkPid(msg.sender),
                 checkUsername(msg.sender),
@@ -3398,20 +3419,46 @@ contract LpLockMining is Ownable {
                 );
     }
     function returnAward(address _user, uint256 _id) public view returns(uint256) {
-        return  IERC20(sbt005).balanceOf(IFireSoul(fireSoul).getSoulAccount(_user)) / IERC20(sbt005).totalSupply() * block.timestamp - userRecord[_user][_id].startTime / ONE_BLOCK * oneBlockAward();
+        return  IERC20(sbt005).balanceOf(IFireSoul(fireSoul).getSoulAccount(_user)) / IERC20(sbt005).totalSupply() * block.timestamp - userlockDetails[_user][_id].startTime / ONE_BLOCK * oneBlockAward();
     }
 
     function ClaimFLM(uint256 _id) public {
-        TransferHelper.safeTransfer(flm, msg.sender, returnAward(msg.sender,_id));
-        userRecord[msg.sender][_id].startTime = block.timestamp;
+        require(userlockDetails[msg.sender][_id].lpAmount > 0 ,'The lp of this locked position is insufficient');
+        uint256 amount0 = returnAward(msg.sender,_id);
+        TransferHelper.safeTransfer(flm, msg.sender, amount0);
+        userlockDetails[msg.sender][_id].startTime = block.timestamp;
+        emit userClaimFlm
+        (
+                checkPid(msg.sender),
+                checkUsername(msg.sender),
+                IFireSoul(fireSoul).checkFIDA(msg.sender),
+                msg.sender,
+                amount0,
+                block.timestamp
+
+        );
     }
     function Claim(uint256 _amount,uint256 _id) public {
-        require(userRecord[msg.sender][_id].lpAmount >= _amount,'Insufficient lp tokens');
+        require(userStatus[msg.sender],'Please activate extraction first');
+        require(userlockDetails[msg.sender][_id].lpAmount >= _amount,'Insufficient lp tokens');
+        require(block.timestamp >= userlockDetails[msg.sender][_id].endTime,'The lock-up period has not yet expired');
         address fireSoulAccount = IFireSoul(fireSoul).getSoulAccount(msg.sender);
         TransferHelper.safeTransfer(Pool,msg.sender, _amount);
-        userRecord[msg.sender][_id].lpAmount -= _amount;
-        ISbt001(sbt001).burn(fireSoulAccount, )
-        ISbt005(sbt005).burn(fireSoulAccount, _amount * ratioAmount);
+        uint256 amount0 = userlockDetails[msg.sender][_id].sbt001Amount * _amount / userlockDetails[msg.sender][_id].lpAmount ;
+        uint256 amount1 = userlockDetails[msg.sender][_id].sbt005Amount * _amount / userlockDetails[msg.sender][_id].lpAmount ;
+
+        userlockDetails[msg.sender][_id].lpAmount -= _amount;
+        ISbt001(sbt001).burn(fireSoulAccount, amount0 );
+        ISbt005(sbt005).burn(fireSoulAccount, amount1 );
+        emit extractLpRecord
+        (
+                checkPid(msg.sender),
+                checkUsername(msg.sender),
+                IFireSoul(fireSoul).checkFIDA(msg.sender),
+                msg.sender,
+                userlockDetails[msg.sender][_id].lpAmount,
+                block.timestamp
+        );
     }
     function setWeights(uint256 _month,uint256 _weight) public onlyOwner {
         require(Weights[_month] == 0 , "error setting"); 
