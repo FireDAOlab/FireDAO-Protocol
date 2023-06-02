@@ -268,7 +268,7 @@ contract Comp {
           checkpoints[delegatee][nCheckpoints] = Checkpoint(blockNumber, newVotes);
           numCheckpoints[delegatee] = nCheckpoints + 1;
       }
-
+5
       emit DelegateVotesChanged(delegatee, oldVotes, newVotes);
     }
 
