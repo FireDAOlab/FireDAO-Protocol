@@ -16,6 +16,7 @@ contract ReputationV2 is Ownable{
         uint32 fromBlock;
         uint votes;
     }
+    IFireSoul public FireSoul;
     mapping (address => tokenInfo) public tokens;
     mapping (address => address) public delegates;
     mapping (address => mapping (uint32 => Checkpoint)) public checkpoints;
@@ -23,7 +24,9 @@ contract ReputationV2 is Ownable{
     event AddToken(address indexed _address,uint _weight);
     event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
     event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
-
+    constructor(IFireSoul _fireSoul) {
+        FireSoul = _fireSoul;
+    }
 
     function addToken(address _token,uint _weight) onlyOwner{
         require(_weight > 0 ,"Wrong weight");
@@ -37,6 +40,7 @@ contract ReputationV2 is Ownable{
         ti.enabled = false;
     }
     function delegate(address delegatee) public {
+        require(FireSoul.checkFID(msg.sender),"You don't have a FID");
         return _delegate(msg.sender, delegatee);
     }
 
@@ -80,16 +84,14 @@ contract ReputationV2 is Ownable{
         return checkpoints[account][lower].votes;
     }
 
-    function addScore(uint amount) external {
-        require(tokens[msg.sender].weight > 0 , "Wrong weight");
-        if(tokens[msg.sender].enabled){
+    function addScore(address user,uint amount) external {
+        if(tokens[msg.sender].enabled && FireSoul.checkFID(user)){
             amount=amount.mul(tokens[msg.sender].weight);
             _moveDelegates(address(0),delegates[msg.sender], amount);
         }
     }
-    function subScore(uint amount) external {
-        require(tokens[msg.sender].weight > 0 , "Wrong weight");
-        if(tokens[msg.sender].enabled){
+    function subScore(address user,uint amount) external {
+        if(tokens[msg.sender].enabled && FireSoul.checkFID(user)){
             amount = amount.mul(tokens[msg.sender].weight);
             _moveDelegates(delegates[msg.sender],address(0),amount);
         }
