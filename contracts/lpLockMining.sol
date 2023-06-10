@@ -3747,6 +3747,7 @@ contract LpLockMining is Ownable {
     
     struct lockDetails {
         address user;
+        address soul;
         uint256 lpAmount;
         uint256 period;
         uint256 weightCoefficient;
@@ -3757,7 +3758,7 @@ contract LpLockMining is Ownable {
     }
     event adminTransferRecord(uint256 pid, string username, uint256 fid,address user, uint256 amount, uint256 rewardCycle, uint256 time);
     event adminBackTokenRecord(uint256 pid, string username, uint256 fid,address user, address token, uint256 amount, uint256 time);
-    event depositRecord(uint256 pid, string name , uint256 fid , address user, uint256 lpAmount,uint256 period,uint256 weightCoefficient, uint256 yield, uint256 time);
+    event depositRecord(uint256 pid, string name , uint256 fid , address user, uint256 lpAmount,uint256 period,uint256 weightCoefficient, uint256 time);
     event userClaimFlm(uint256 pid, string name , uint256 fid , address user, uint256 flmAmount,uint256 time);
     event extractLpRecord(uint256 pid, string name , uint256 fid , address user, uint256 lpAmount,uint256 time);
     FirePassport public fp;
@@ -3860,71 +3861,96 @@ contract LpLockMining is Ownable {
         require(block.timestamp >= isNotActivation[msg.sender],'Insufficient unlock time');
         userStatus[msg.sender] = true;
     }
-    function oneBlockAward() public view returns(uint256) {
-        return FLM_AMOUNT / ONE_MONTH / ONE_BLOCK ;
-    }
-    function oneYearBlockAward() public view returns(uint256) {
-        return FLM_AMOUNT / ONE_MONTH / ONE_BLOCK * YEAR;
-    }
-    function getFdtAmountInLP(uint256 _LPAmount) internal view returns(uint256) {
-        return _LPAmount.mul(IERC20(Pool).balanceOf(fdt)) / uniswapV2Pair.totalSupply();
-    }
-    function getWethAmountInLP(uint256 _LPAmount) internal view returns(uint256) {
-        return _LPAmount.mul(IERC20(Pool).balanceOf(weth)) / uniswapV2Pair.totalSupply();
+function oneBlockAward() public view returns (uint256) {
+    return SafeMath.div(FLM_AMOUNT, ONE_MONTH).div(ONE_BLOCK);
+}
 
-    }
-    // 假设当前FDT价格为1USDT
-    function yield(address _user, uint256 _LpAmount) public view returns(uint256) {
-       return _LpAmount * ratioAmount / IERC20(sbt005).totalSupply() * oneYearBlockAward() / IERC20(fdt).balanceOf(_user) / REMOVE_ZERO + getWethAmountInLP(_LpAmount) * getLatesPrice();
-    }
+function oneYearBlockAward() public view returns (uint256) {
+    return SafeMath.mul(oneBlockAward(), YEAR);
+}
 
-    function lockLp(uint256 _several,uint256 _LPAmount) public pause{
-        require(IFireSoul(fireSoul).checkFID(msg.sender),"you don't have fid yet");
-        require(IERC20(Pool).balanceOf(msg.sender) >= _LPAmount && _LPAmount != 0,'Your Lp quota is insufficient');
-        require(
-                _several == 0 ||
-                _several == 1 || 
-                _several == 3 ||
-                _several == 6 ||
-                _several == 12||
-                _several == 24||
-                _several == 36 ,
-                "Please enter the correct lock-up month");
-            address receiver = IFireSoul(fireSoul).getSoulAccount(msg.sender);
-            uint256 amount0 = _LPAmount.mul(IERC20(fdt).balanceOf(Pool)) / uniswapV2Pair.totalSupply();
-            uint256 amount1 = _LPAmount.mul(ratioAmount);
-            ISbt001(sbt001).mint(receiver, amount0 * Weights[_several]);
-            ISbt005(sbt005).mint(receiver, amount1);
-            TransferHelper.safeTransferFrom(Pool,msg.sender,address(this),_LPAmount);
-            isNotActivation[msg.sender] = block.timestamp + tPuls ;
-            lockDetails memory details = lockDetails
-            (
-                msg.sender,
-                _LPAmount,
-                _several,
-                Weights[_several],
-                block.timestamp,
-                block.timestamp + _several * ONE_MONTH,
-                amount0 * Weights[_several],
-                amount1
-            );
-            userlockDetails[msg.sender].push(details);
-            emit depositRecord(
-                checkPid(msg.sender),
-                checkUsername(msg.sender),
-                IFireSoul(fireSoul).checkFIDA(msg.sender),
-                msg.sender,
-                _LPAmount,
-                _several,
-                Weights[_several],
-                yield(msg.sender,_LPAmount),
-                block.timestamp
-                );
-    }
-    function returnAward(address _user, uint256 _id) public view returns(uint256) {
-        return  IERC20(sbt005).balanceOf(IFireSoul(fireSoul).getSoulAccount(_user)) / IERC20(sbt005).totalSupply() * block.timestamp - userlockDetails[_user][_id].startTime / ONE_BLOCK * oneBlockAward();
-    }
-    function getTotalAward(address _user) public view returns(uint256)  {
+function getFdtAmountInLP(uint256 _LPAmount) public view returns (uint256) {
+    return SafeMath.div(_LPAmount.mul(IERC20(fdt).balanceOf(Pool)), uniswapV2Pair.totalSupply());
+}
+
+function getWethAmountInLP(uint256 _LPAmount) public view returns (uint256) {
+    return SafeMath.div(_LPAmount.mul(IERC20(weth).balanceOf(Pool)), uniswapV2Pair.totalSupply());
+}
+
+function getSbt005TotalSupply() public view returns(uint256) {
+    return IERC20(sbt005).totalSupply();
+}
+
+// 假设当前FDT价格为1USDT
+
+
+function lockLp(uint256 _several, uint256 _LPAmount) public pause {
+    require(IFireSoul(fireSoul).checkFID(msg.sender), "You don't have fid yet");
+    require(IERC20(Pool).balanceOf(msg.sender) >= _LPAmount && _LPAmount != 0, "Your Lp quota is insufficient");
+    require(
+        _several == 0 ||
+        _several == 1 || 
+        _several == 3 ||
+        _several == 6 ||
+        _several == 12 ||
+        _several == 24 ||
+        _several == 36,
+        "Please enter the correct lock-up month"
+    );
+    
+    address receiver = IFireSoul(fireSoul).getSoulAccount(msg.sender);
+    uint256 amount0 = SafeMath.div(_LPAmount.mul(IERC20(fdt).balanceOf(Pool)), uniswapV2Pair.totalSupply());
+    uint256 amount1 = _LPAmount.mul(ratioAmount);
+    
+    ISbt001(sbt001).mint(receiver, SafeMath.mul(amount0, Weights[_several]));
+    ISbt005(sbt005).mint(receiver, amount1);
+    TransferHelper.safeTransferFrom(Pool, msg.sender, address(this), _LPAmount);
+    isNotActivation[msg.sender] = block.timestamp + tPuls;
+    
+    lockDetails memory details = lockDetails(
+        msg.sender,
+        receiver,
+        _LPAmount,
+        _several,
+        Weights[_several],
+        block.timestamp,
+        block.timestamp + _several * ONE_MONTH,
+        SafeMath.mul(amount0, Weights[_several]),
+        amount1
+    );
+    
+    userlockDetails[msg.sender].push(details);
+    
+    emit depositRecord(
+        checkPid(msg.sender),
+        checkUsername(msg.sender),
+        IFireSoul(fireSoul).checkFIDA(msg.sender),
+        msg.sender,
+        _LPAmount,
+        _several,
+        Weights[_several],
+        block.timestamp
+    );
+}
+
+
+
+  
+function returnAward(address _user, uint256 _id) public view returns (uint256) {
+    uint256 balance = IERC20(sbt005).balanceOf(userlockDetails[_user][_id].soul);
+    uint256 startTime = userlockDetails[_user][_id].startTime;
+    uint256 currentTime = block.timestamp;
+
+    uint256 dividend = balance.mul(currentTime.sub(startTime));
+    uint256 divisor = ONE_BLOCK.mul(oneBlockAward());
+
+    uint256 award = SafeMath.div(SafeMath.mul(dividend, 1e18), divisor); // Multiply by 1e18 for decimal precision
+
+    return award;
+}
+
+
+    function canClaim(address _user) public view returns(uint256)  {
         uint256 total = 0;
         for(uint256 i = 0 ; i < getuserlockDetailsLength(_user); i ++){
             total += returnAward(_user, i);
@@ -3933,7 +3959,7 @@ contract LpLockMining is Ownable {
     }
 
     function ClaimFLM() public pause{
-        for(uint256 i=0;i<getuserlockDetailsLength(msg.sender);i++) {
+        for(uint256 i=0;i < getuserlockDetailsLength(msg.sender); i++) {
         if(userlockDetails[msg.sender][i].lpAmount == 0 ){
             continue;
         }
@@ -3955,12 +3981,12 @@ contract LpLockMining is Ownable {
     }
     function Claim(uint256 _amount,uint256 _id) public pause{
         require(userStatus[msg.sender],'Please activate extraction first');
-        require(userlockDetails[msg.sender][_id].lpAmount >= _amount,'Insufficient lp tokens');
+        require(userlockDetails[msg.sender][_id].lpAmount >= _amount && _amount> 0,'Insufficient lp tokens');
         require(block.timestamp >= userlockDetails[msg.sender][_id].endTime,'The lock-up period has not yet expired');
         address fireSoulAccount = IFireSoul(fireSoul).getSoulAccount(msg.sender);
         TransferHelper.safeTransfer(Pool,msg.sender, _amount);
-        uint256 amount0 = userlockDetails[msg.sender][_id].sbt001Amount * _amount / userlockDetails[msg.sender][_id].lpAmount ;
-        uint256 amount1 = userlockDetails[msg.sender][_id].sbt005Amount * _amount / userlockDetails[msg.sender][_id].lpAmount ;
+uint256 amount0 = SafeMath.div(userlockDetails[msg.sender][_id].sbt001Amount.mul(_amount), userlockDetails[msg.sender][_id].lpAmount);
+uint256 amount1 = SafeMath.div(userlockDetails[msg.sender][_id].sbt005Amount.mul(_amount), userlockDetails[msg.sender][_id].lpAmount);
 
         userlockDetails[msg.sender][_id].lpAmount -= _amount;
         ISbt001(sbt001).burn(fireSoulAccount, amount0 );
