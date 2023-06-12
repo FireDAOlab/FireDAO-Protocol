@@ -16,26 +16,39 @@ contract ReputationV2 is Ownable{
         uint32 fromBlock;
         uint votes;
     }
+        /// @notice EIP-20 token name for this token
+    string public constant name = "Fire Reputation Token";
+
+    /// @notice EIP-20 token symbol for this token
+    string public constant symbol = "FRT";
+
+    /// @notice EIP-20 token decimals for this token
+    uint8 public constant decimals = 18;
+    uint public  totalSupply;
     IFireSoul public FireSoul;
     mapping (address => tokenInfo) public tokens;
     mapping (address => address) public delegates;
     mapping (address => mapping (uint32 => Checkpoint)) public checkpoints;
     mapping (address => uint32) public numCheckpoints;
+    mapping (address => mapping (address => uint)) internal allowances;
+    mapping (address => uint) internal balances;
     event AddToken(address indexed _address,uint _weight);
     event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
     event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+    event Approval(address indexed owner, address indexed spender, uint256 amount);
     constructor(IFireSoul _fireSoul) {
         FireSoul = _fireSoul;
     }
 
-    function addToken(address _token,uint _weight) onlyOwner{
+    function addToken(address _token,uint _weight) public onlyOwner{
         require(_weight > 0 ,"Wrong weight");
         tokenInfo storage ti = tokens[_token];
         ti.weight = _weight;
         ti.enabled = true;
         emit AddToken(_token,_weight);
     }
-    function deactivateToken(address _token) onlyOwner{
+    function deactivateToken(address _token) public onlyOwner{
         tokenInfo storage ti = tokens[_token];
         ti.enabled = false;
     }
@@ -44,13 +57,15 @@ contract ReputationV2 is Ownable{
         return _delegate(msg.sender, delegatee);
     }
 
-    function getCurrentScore(address account) public view returns (uint96) {
+    function getCurrentVotes(address account) public view returns (uint) {
         uint32 nCheckpoints = numCheckpoints[account];
         return nCheckpoints > 0 ? checkpoints[account][nCheckpoints - 1].votes : 0;
     }
+    function balanceOf(address account) external view returns (uint) {
+        return balances[account];
+    }
 
-
-    function getPriorVotes(address account, uint blockNumber) public view returns (uint96) {
+    function getPriorVotes(address account, uint blockNumber) public view returns (uint) {
         require(blockNumber < block.number, "Reputation::getPriorVotes: not yet determined");
 
         uint32 nCheckpoints = numCheckpoints[account];
@@ -84,22 +99,29 @@ contract ReputationV2 is Ownable{
         return checkpoints[account][lower].votes;
     }
 
-    function addScore(address user,uint amount) external {
+    function mint(address user,uint amount) external {
         if(tokens[msg.sender].enabled && FireSoul.checkFID(user)){
             amount=amount.mul(tokens[msg.sender].weight);
-            _moveDelegates(address(0),delegates[msg.sender], amount);
+            _moveDelegates(address(0),delegates[user], amount);
+            balances[user] = balances[user].add(amount);
+            totalSupply = totalSupply.add(amount);
+            emit Transfer(address(0), user, amount);
         }
     }
-    function subScore(address user,uint amount) external {
+    function burn(address user,uint amount) external {
         if(tokens[msg.sender].enabled && FireSoul.checkFID(user)){
             amount = amount.mul(tokens[msg.sender].weight);
-            _moveDelegates(delegates[msg.sender],address(0),amount);
+            _moveDelegates(delegates[user],address(0),amount);
+            balances[user] = balances[user].sub(amount);
+            totalSupply = totalSupply.sub(amount);
+            emit Transfer(user, address(0), amount);
         }
     }
 
     function _delegate(address delegator, address delegatee) internal {
         address currentDelegate = delegates[delegator];
-        uint96 delegatorBalance = getCurrentScore[delegator];
+        uint32 nCheckpoints = numCheckpoints[delegator];
+        uint delegatorBalance = nCheckpoints > 0 ? checkpoints[delegator][nCheckpoints - 1].votes : 0;
         delegates[delegator] = delegatee;
         emit DelegateChanged(delegator, currentDelegate, delegatee);
         _moveDelegates(currentDelegate, delegatee, delegatorBalance);
@@ -124,7 +146,7 @@ contract ReputationV2 is Ownable{
 
     }
 
-    function _writeCheckpoint(address delegatee, uint32 nCheckpoints, uint oldVotes, uint96 newVotes) internal {
+    function _writeCheckpoint(address delegatee, uint32 nCheckpoints, uint oldVotes, uint newVotes) internal {
         uint32 blockNumber = safe32(block.number, "Reputation::_writeCheckpoint: block number exceeds 32 bits");
         if (nCheckpoints > 0 && checkpoints[delegatee][nCheckpoints - 1].fromBlock == blockNumber) {
             checkpoints[delegatee][nCheckpoints - 1].votes = newVotes;
