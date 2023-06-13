@@ -29,7 +29,9 @@ contract ReputationV2 is Ownable{
     mapping (address => tokenInfo) public tokens;
     mapping (address => address) public delegates;
     mapping (address => mapping (uint32 => Checkpoint)) public checkpoints;
+    mapping (uint32 => Checkpoint) public allCheckpoints;
     mapping (address => uint32) public numCheckpoints;
+    uint32 public allNumCheckpoints;
     mapping (address => mapping (address => uint)) internal allowances;
     mapping (address => uint) internal balances;
     event AddToken(address indexed _address,uint _weight);
@@ -65,6 +67,35 @@ contract ReputationV2 is Ownable{
         return balances[account];
     }
 
+    function getAllPriorVotes(uint blockNumber) public view returns (uint) {
+        require(blockNumber < block.number, "Reputation::getPriorVotes: not yet determined");
+        uint32 nCheckpoints = allNumCheckpoints;
+        if (nCheckpoints == 0) {
+            return 0;
+        }
+        if (allCheckpoints[nCheckpoints - 1].fromBlock <= blockNumber) {
+            return allCheckpoints[nCheckpoints - 1].votes;
+        }
+        // Next check implicit zero balance
+        if (allCheckpoints[0].fromBlock > blockNumber) {
+            return 0;
+        }
+
+        uint32 lower = 0;
+        uint32 upper = nCheckpoints - 1;
+        while (upper > lower) {
+            uint32 center = upper - (upper - lower) / 2; // ceil, avoiding overflow
+            Checkpoint memory cp = allCheckpoints[center];
+            if (cp.fromBlock == blockNumber) {
+                return cp.votes;
+            } else if (cp.fromBlock < blockNumber) {
+                lower = center;
+            } else {
+                upper = center - 1;
+            }
+        }
+        return allCheckpoints[lower].votes;
+    }
     function getPriorVotes(address account, uint blockNumber) public view returns (uint) {
         require(blockNumber < block.number, "Reputation::getPriorVotes: not yet determined");
 
@@ -150,9 +181,12 @@ contract ReputationV2 is Ownable{
         uint32 blockNumber = safe32(block.number, "Reputation::_writeCheckpoint: block number exceeds 32 bits");
         if (nCheckpoints > 0 && checkpoints[delegatee][nCheckpoints - 1].fromBlock == blockNumber) {
             checkpoints[delegatee][nCheckpoints - 1].votes = newVotes;
+            allCheckpoints[nCheckpoints - 1].votes = allCheckpoints[nCheckpoints - 1].votes.add(newVotes);
         } else {
             checkpoints[delegatee][nCheckpoints] = Checkpoint(blockNumber, newVotes);
+            allCheckpoints[nCheckpoints] = Checkpoint(blockNumber,allCheckpoints[nCheckpoints].votes.add(newVotes));
             numCheckpoints[delegatee] = nCheckpoints + 1;
+            allNumCheckpoints = nCheckpoints + 1;
         }
         emit DelegateVotesChanged(delegatee, oldVotes, newVotes);
     }

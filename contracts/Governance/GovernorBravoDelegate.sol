@@ -2,9 +2,10 @@
 pragma solidity ^0.8.10;
 
 import "./GovernorBravoInterfaces.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoEvents {
-
+    using SafeMath for uint256;
     /// @notice The name of this contract
     string public constant name = "Compound Governor Bravo";
 
@@ -15,19 +16,21 @@ contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoE
     uint public constant MAX_PROPOSAL_THRESHOLD = 100000e18; //100,000 Comp
 
     /// @notice The minimum setable voting period
-    uint public constant MIN_VOTING_PERIOD = 5760; // About 24 hours
+    uint public  VOTING_PERIOD = 864000; // About 24 hours
+//    uint public constant MIN_VOTING_PERIOD = 576000; // About 24 hours
 
     /// @notice The max setable voting period
-    uint public constant MAX_VOTING_PERIOD = 80640; // About 2 weeks
+//    uint public constant MAX_VOTING_PERIOD = 576; // About 2 weeks
 
     /// @notice The min setable voting delay
-    uint public constant MIN_VOTING_DELAY = 1;
+//    uint public constant MIN_VOTING_DELAY = 1;
+    uint public  VOTING_DELAY = 864000;
 
     /// @notice The max setable voting delay
-    uint public constant MAX_VOTING_DELAY = 40320; // About 1 week
+//    uint public constant MAX_VOTING_DELAY = 40320; // About 1 week
 
     /// @notice The number of votes in support of a proposal required in order for a quorum to be reached and for a vote to succeed
-    uint public constant quorumVotes = 400000e18; // 400,000 = 4% of Comp
+//    uint public constant quorumVotes = 400000e18; // 400,000 = 4% of Comp
 
     /// @notice The maximum number of actions that can be included in a proposal
     uint public constant proposalMaxOperations = 10; // 10 actions
@@ -51,10 +54,6 @@ contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoE
         require(msg.sender == admin, "GovernorBravo::initialize: admin only");
         require(timelock_ != address(0), "GovernorBravo::initialize: invalid timelock address");
         require(comp_ != address(0), "GovernorBravo::initialize: invalid comp address");
-        require(votingPeriod_ >= MIN_VOTING_PERIOD && votingPeriod_ <= MAX_VOTING_PERIOD, "GovernorBravo::initialize: invalid voting period");
-        require(votingDelay_ >= MIN_VOTING_DELAY && votingDelay_ <= MAX_VOTING_DELAY, "GovernorBravo::initialize: invalid voting delay");
-        require(proposalThreshold_ >= MIN_PROPOSAL_THRESHOLD && proposalThreshold_ <= MAX_PROPOSAL_THRESHOLD, "GovernorBravo::initialize: invalid proposal threshold");
-
         timelock = TimelockInterface(timelock_);
         comp = CompInterface(comp_);
         votingPeriod = votingPeriod_;
@@ -209,13 +208,17 @@ contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoE
     function state(uint proposalId) public view returns (ProposalState) {
         require(proposalCount >= proposalId && proposalId > initialProposalId, "GovernorBravo::state: invalid proposal id");
         Proposal storage proposal = proposals[proposalId];
+        uint getAllVotes = comp.getAllPriorVotes(proposal.startBlock);
+        uint quorumVotes = getAllVotes.mul(20).div(100);
+        uint allVotes = proposal.forVotes + proposal.againstVotes + proposal.abstainVotes;
+        uint judgeVotes = allVotes.mul(50).div(100);
         if (proposal.canceled) {
             return ProposalState.Canceled;
         } else if (block.number <= proposal.startBlock) {
             return ProposalState.Pending;
         } else if (block.number <= proposal.endBlock) {
             return ProposalState.Active;
-        } else if (proposal.forVotes <= proposal.againstVotes || proposal.forVotes < quorumVotes) {
+        } else if (proposal.forVotes < judgeVotes || allVotes < quorumVotes) {
             return ProposalState.Defeated;
         } else if (proposal.eta == 0) {
             return ProposalState.Succeeded;
@@ -267,13 +270,13 @@ contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoE
       * @param support The support value for the vote. 0=against, 1=for, 2=abstain
       * @return The number of votes cast
       */
-    function castVoteInternal(address voter, uint proposalId, uint8 support) internal returns (uint96) {
+    function castVoteInternal(address voter, uint proposalId, uint8 support) internal returns (uint) {
         require(state(proposalId) == ProposalState.Active, "GovernorBravo::castVoteInternal: voting is closed");
         require(support <= 2, "GovernorBravo::castVoteInternal: invalid vote type");
         Proposal storage proposal = proposals[proposalId];
         Receipt storage receipt = proposal.receipts[voter];
         require(receipt.hasVoted == false, "GovernorBravo::castVoteInternal: voter already voted");
-        uint96 votes = comp.getPriorVotes(voter, proposal.startBlock);
+        uint votes = comp.getPriorVotes(voter, proposal.startBlock);
 
         if (support == 0) {
             proposal.againstVotes = add256(proposal.againstVotes, votes);
@@ -305,10 +308,8 @@ contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoE
       */
     function _setVotingDelay(uint newVotingDelay) external {
         require(msg.sender == admin, "GovernorBravo::_setVotingDelay: admin only");
-        require(newVotingDelay >= MIN_VOTING_DELAY && newVotingDelay <= MAX_VOTING_DELAY, "GovernorBravo::_setVotingDelay: invalid voting delay");
         uint oldVotingDelay = votingDelay;
         votingDelay = newVotingDelay;
-
         emit VotingDelaySet(oldVotingDelay,votingDelay);
     }
 
@@ -318,7 +319,6 @@ contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoE
       */
     function _setVotingPeriod(uint newVotingPeriod) external {
         require(msg.sender == admin, "GovernorBravo::_setVotingPeriod: admin only");
-        require(newVotingPeriod >= MIN_VOTING_PERIOD && newVotingPeriod <= MAX_VOTING_PERIOD, "GovernorBravo::_setVotingPeriod: invalid voting period");
         uint oldVotingPeriod = votingPeriod;
         votingPeriod = newVotingPeriod;
 
@@ -332,7 +332,6 @@ contract GovernorBravoDelegate is GovernorBravoDelegateStorageV2, GovernorBravoE
       */
     function _setProposalThreshold(uint newProposalThreshold) external {
         require(msg.sender == admin, "GovernorBravo::_setProposalThreshold: admin only");
-        require(newProposalThreshold >= MIN_PROPOSAL_THRESHOLD && newProposalThreshold <= MAX_PROPOSAL_THRESHOLD, "GovernorBravo::_setProposalThreshold: invalid proposal threshold");
         uint oldProposalThreshold = proposalThreshold;
         proposalThreshold = newProposalThreshold;
 
