@@ -7,8 +7,9 @@ import "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol
 //import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
-
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 contract GovernorContract is Governor, GovernorSettings, GovernorCountingSimple, GovernorVotes, GovernorVotesQuorumFraction, GovernorTimelockControl {
+    using SafeMath for uint256;
     constructor(IVotes _token, TimelockController _timelock, uint256 _quorumPercentage,
         uint256 _votingPeriod,
         uint256 _votingDelay)
