@@ -15,7 +15,7 @@ contract FLMExchange is Ownable,ReentrancyGuard {
     EnumerableSet.AddressSet private managers;
     IERC20 public FLM;
     mapping(address => storageDetails) public userStores;
-    event AddWhiteList(address indexed _operator,address indexed _user,uint _amount);
+    event AddWhiteList(address indexed _operator,address[] indexed _user,uint[] _amount);
     event Claim(address indexed _user,uint _amount);
     constructor(IERC20 _FLM) {
         FLM = _FLM;
@@ -28,10 +28,17 @@ contract FLMExchange is Ownable,ReentrancyGuard {
         require(managers.contains(msg.sender) == true,"This manager does not exist");
         managers.remove(_manager);
     }
-    function addWhiteList(address _user,uint _amount)  external {
+    function withdraw(address _token,address _to,uint _amount) external onlyOwner{
+        IERC20(_token).transfer(_to,_amount);
+    }
+    function addWhiteList(address[] memory _users,uint[] memory _amounts)  external {
         require(managers.contains(msg.sender) == true,"No permission to operate");
-        userStores[_user].storeAmount += _amount;
-        emit AddWhiteList(msg.sender,_user,_amount);
+        require(_users.length == _amounts.length,"Parameter input error");
+        for(uint i = 0; i < _users.length;i++){
+            userStores[_users[i]].storeAmount += _amounts[i];
+        }
+
+        emit AddWhiteList(msg.sender,_users,_amounts);
     }
     function claim(uint _amount) external nonReentrant  {
         require(userStores[msg.sender].storeAmount >= _amount,"Not enough quantity");
@@ -43,6 +50,6 @@ contract FLMExchange is Ownable,ReentrancyGuard {
     function managerList() external view returns(address[] memory) {
        return managers.values();
     }
-    
+
 
 }
