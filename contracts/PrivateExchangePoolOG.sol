@@ -796,18 +796,558 @@ interface IFirePassport {
     function getUserInfo(address user) external view returns(User memory);
     }
 
+// OpenZeppelin Contracts (last updated v4.8.0) (utils/structs/EnumerableSet.sol)
+// This file was procedurally generated from scripts/generate/templates/EnumerableSet.js.
 
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Library for managing
+ * https://en.wikipedia.org/wiki/Set_(abstract_data_type)[sets] of primitive
+ * types.
+ *
+ * Sets have the following properties:
+ *
+ * - Elements are added, removed, and checked for existence in constant time
+ * (O(1)).
+ * - Elements are enumerated in O(n). No guarantees are made on the ordering.
+ *
+ * ```
+ * contract Example {
+ *     // Add the library methods
+ *     using EnumerableSet for EnumerableSet.AddressSet;
+ *
+ *     // Declare a set state variable
+ *     EnumerableSet.AddressSet private mySet;
+ * }
+ * ```
+ *
+ * As of v3.3.0, sets of type `bytes32` (`Bytes32Set`), `address` (`AddressSet`)
+ * and `uint256` (`UintSet`) are supported.
+ *
+ * [WARNING]
+ * ====
+ * Trying to delete such a structure from storage will likely result in data corruption, rendering the structure
+ * unusable.
+ * See https://github.com/ethereum/solidity/pull/11843[ethereum/solidity#11843] for more info.
+ *
+ * In order to clean an EnumerableSet, you can either remove all elements one by one or create a fresh instance using an
+ * array of EnumerableSet.
+ * ====
+ */
+library EnumerableSet {
+    // To implement this library for multiple types with as little code
+    // repetition as possible, we write it in terms of a generic Set type with
+    // bytes32 values.
+    // The Set implementation uses private functions, and user-facing
+    // implementations (such as AddressSet) are just wrappers around the
+    // underlying Set.
+    // This means that we can only create new EnumerableSets for types that fit
+    // in bytes32.
+
+    struct Set {
+        // Storage of set values
+        bytes32[] _values;
+        // Position of the value in the `values` array, plus 1 because index 0
+        // means a value is not in the set.
+        mapping(bytes32 => uint256) _indexes;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function _add(Set storage set, bytes32 value) private returns (bool) {
+        if (!_contains(set, value)) {
+            set._values.push(value);
+            // The value is stored at length-1, but we add 1 to all indexes
+            // and use 0 as a sentinel value
+            set._indexes[value] = set._values.length;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function _remove(Set storage set, bytes32 value) private returns (bool) {
+        // We read and store the value's index to prevent multiple reads from the same storage slot
+        uint256 valueIndex = set._indexes[value];
+
+        if (valueIndex != 0) {
+            // Equivalent to contains(set, value)
+            // To delete an element from the _values array in O(1), we swap the element to delete with the last one in
+            // the array, and then remove the last element (sometimes called as 'swap and pop').
+            // This modifies the order of the array, as noted in {at}.
+
+            uint256 toDeleteIndex = valueIndex - 1;
+            uint256 lastIndex = set._values.length - 1;
+
+            if (lastIndex != toDeleteIndex) {
+                bytes32 lastValue = set._values[lastIndex];
+
+                // Move the last value to the index where the value to delete is
+                set._values[toDeleteIndex] = lastValue;
+                // Update the index for the moved value
+                set._indexes[lastValue] = valueIndex; // Replace lastValue's index to valueIndex
+            }
+
+            // Delete the slot where the moved value was stored
+            set._values.pop();
+
+            // Delete the index for the deleted slot
+            delete set._indexes[value];
+
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function _contains(Set storage set, bytes32 value) private view returns (bool) {
+        return set._indexes[value] != 0;
+    }
+
+    /**
+     * @dev Returns the number of values on the set. O(1).
+     */
+    function _length(Set storage set) private view returns (uint256) {
+        return set._values.length;
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function _at(Set storage set, uint256 index) private view returns (bytes32) {
+        return set._values[index];
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function _values(Set storage set) private view returns (bytes32[] memory) {
+        return set._values;
+    }
+
+    // Bytes32Set
+
+    struct Bytes32Set {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _add(set._inner, value);
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _remove(set._inner, value);
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(Bytes32Set storage set, bytes32 value) internal view returns (bool) {
+        return _contains(set._inner, value);
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(Bytes32Set storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
+        return _at(set._inner, index);
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function values(Bytes32Set storage set) internal view returns (bytes32[] memory) {
+        bytes32[] memory store = _values(set._inner);
+        bytes32[] memory result;
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := store
+        }
+
+        return result;
+    }
+
+    // AddressSet
+
+    struct AddressSet {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(AddressSet storage set, address value) internal returns (bool) {
+        return _add(set._inner, bytes32(uint256(uint160(value))));
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(AddressSet storage set, address value) internal returns (bool) {
+        return _remove(set._inner, bytes32(uint256(uint160(value))));
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(AddressSet storage set, address value) internal view returns (bool) {
+        return _contains(set._inner, bytes32(uint256(uint160(value))));
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(AddressSet storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(AddressSet storage set, uint256 index) internal view returns (address) {
+        return address(uint160(uint256(_at(set._inner, index))));
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function values(AddressSet storage set) internal view returns (address[] memory) {
+        bytes32[] memory store = _values(set._inner);
+        address[] memory result;
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := store
+        }
+
+        return result;
+    }
+
+    // UintSet
+
+    struct UintSet {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(UintSet storage set, uint256 value) internal returns (bool) {
+        return _add(set._inner, bytes32(value));
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(UintSet storage set, uint256 value) internal returns (bool) {
+        return _remove(set._inner, bytes32(value));
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(UintSet storage set, uint256 value) internal view returns (bool) {
+        return _contains(set._inner, bytes32(value));
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(UintSet storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(UintSet storage set, uint256 index) internal view returns (uint256) {
+        return uint256(_at(set._inner, index));
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function values(UintSet storage set) internal view returns (uint256[] memory) {
+        bytes32[] memory store = _values(set._inner);
+        uint256[] memory result;
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := store
+        }
+
+        return result;
+    }
+}
+//File:./lib/safeMath.sol
+
+pragma solidity ^0.8.0;
+
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     *
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath: subtraction overflow");
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     *
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "SafeMath: division by zero");
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return mod(a, b, "SafeMath: modulo by zero");
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * Reverts with custom message when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        require(b != 0, errorMessage);
+        return a % b;
+    }
+}
 
 //	SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 contract PrivateExchangePoolOG is Ownable,Pausable {
 
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using SafeMath for uint256;
+
     struct whiteList{
         uint256 Pid;
         string name;
         address user;
     }
+
+    EnumerableSet.AddressSet private adminsLevelTwo;
+    EnumerableSet.AddressSet private adminsLevelThree;
 
 	ERC20 public fdt;
 	bool public feeOn;
@@ -837,13 +1377,9 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         2000000000000000000
     ];
     address[] public assignAddress;
-    address[] public adminsLevelTwo;
-    address[] public adminsLevelThree;
     uint256[] public rate;
     whiteList[] public ShowWhiteList;
     mapping(address => whiteList[]) public adminInviter;
-    mapping(address => bool) public IsAdminLevelTwo;
-    mapping(address => bool) public IsAdminLevelThree;
     mapping(address => bool) public WhiteListUser;
 	mapping(address => uint256) public userTotalBuy;
     mapping(address => bool) public isRecommender;
@@ -928,23 +1464,14 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         maxThree = _max;
     }
     function checkAddrForAdminLevelTwo(address _user) internal view returns(bool) {
-        for(uint256 i = 0 ; i < adminsLevelTwo.length; i ++){
-            if(_user == adminsLevelTwo[i]){
-                return false;
-            }
-        }
-        return true;
+      return adminsLevelTwo.contains(_user);
     }
     function checkAddrForAdminLevelThree(address _user) internal view returns(bool){
-        for(uint256 i=0; i<adminsLevelThree.length;i++){
-            if(_user == adminsLevelThree[i]){
-                return false;
-            }
-        }
-        return true;
+        return adminsLevelThree.contains(_user);
+
     }
     function setAdminLevelTwo(address[] memory _addr) public onlyOwner{
-        require(setAdminsForTwo[msg.sender].length < adminLevelTwoMax, "You cannot exceed the maximum limit");
+        require(setAdminsForTwo[msg.sender].length.add(_addr.length) < adminLevelTwoMax, "You cannot exceed the maximum limit");
         for(uint i = 0; i < _addr.length;i++){
             if(pidStatusForAdmin){
                 require(IFirePassport(firePassport_).hasPID(_addr[i]),"address has no pid");
@@ -955,8 +1482,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
              recommender[_addr[i]] = msg.sender;
              recommenderInfo[msg.sender].push(_addr[i]);
              isRecommender[_addr[i]] = true;
-               IsAdminLevelTwo[_addr[i]] = true;
-            adminsLevelTwo.push(_addr[i]);
+            adminsLevelTwo.add(_addr[i]);
             setAdminsForTwo[msg.sender].push(_addr[i]);
             emit adminLevelTwo(getPid(_addr[i]), getName(_addr[i]), _addr[i]);
         }else{
@@ -966,8 +1492,9 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         }
     }
     function setAdminLevelThree(address[] memory _addr) public {
-        require(IsAdminLevelTwo[msg.sender], "Address is not an  level two administrator");
-        require(userSetAdminsForThree[msg.sender].length < adminLevelThreeMax, "You cannot exceed the maximum limit");
+        require(checkAddrForAdminLevelTwo(msg.sender), "Address is not an  level two administrator");
+        require(userSetAdminsForThree[msg.sender].length.add(_addr.length) < adminLevelThreeMax, "You cannot exceed the maximum limit");
+
 
         for(uint256 i = 0; i < _addr.length; i++){
 
@@ -980,8 +1507,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
              recommender[_addr[i]] = msg.sender;
              recommenderInfo[msg.sender].push(_addr[i]);
              isRecommender[_addr[i]] = true;
-            IsAdminLevelThree[_addr[i]] = true;
-            adminsLevelThree.push(_addr[i]);
+            adminsLevelThree.add(_addr[i]);
             userSetAdminsForThree[msg.sender].push( _addr[i]);
             emit adminLevelThree(getPid(_addr[i]), getName(_addr[i]), _addr[i]);
         }else{
@@ -993,35 +1519,14 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     }
 
     function removeAdminLevelTwo(address _addr) public onlyOwner{
-        require(IsAdminLevelTwo[_addr], "Address is not an  level two administrator");
-        uint _id;
-        for(uint i = 0 ; i<adminsLevelTwo.length;i++){
-            if(adminsLevelTwo[i] == _addr){
-            _id = i;
-            break; 
-            }
-        }
-        adminsLevelTwo[_id] = adminsLevelTwo[adminsLevelTwo.length - 1];
-        adminsLevelTwo.pop();
-        IsAdminLevelTwo[_addr] = false;
-
+        require(checkAddrForAdminLevelTwo(_addr), "Address is not an  level two administrator");
+        adminsLevelTwo.remove(_addr);
         emit reAdminLevelTwo(getPid(_addr), getName(_addr), _addr);
     }
 
     function removeAdminLevelThree(address _addr) public {
-        require(IsAdminLevelTwo[msg.sender] && IsAdminLevelThree[_addr],"you are not an level two administrator");
-        uint _id;
-        for(uint i = 0 ; i<adminsLevelThree.length;i++){
-            if(adminsLevelThree[i] == _addr){
-            _id = i;
-            break; 
-            }
-        }
-        removeThree(msg.sender, _addr);
-        adminsLevelThree[_id] = adminsLevelThree[adminsLevelThree.length - 1];
-        adminsLevelThree.pop();
-        IsAdminLevelThree[_addr] = false;
-
+        require(checkAddrForAdminLevelTwo(msg.sender) && checkAddrForAdminLevelThree(_addr),"you are not an level two administrator");
+        adminsLevelThree.remove(_addr);
         emit reAdminLevelThree(getPid(_addr), getName(_addr), _addr);
     }
  
@@ -1044,15 +1549,15 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         return true;
     }
   function getMax(address _user) internal view returns(uint256) {
-        if(IsAdminLevelTwo[_user]){
+        if(checkAddrForAdminLevelTwo(_user)){
             return maxTwo;
-        }else if(IsAdminLevelThree[_user]) {
+        }else if(checkAddrForAdminLevelThree(_user)) {
             return maxThree;
         }
         return 0;
     }
     function addWhiteList(address[] memory _addr) public{
-        require(IsAdminLevelThree[msg.sender],"you don't have permission");
+        require(checkAddrForAdminLevelThree(msg.sender),"you don't have permission");
         require(adminInviter[msg.sender].length <= getMax(msg.sender),"Exceeded the set total");
         for(uint i=0;i<_addr.length;i++){
             if(pidStatusForUser){
@@ -1077,7 +1582,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     }
     
     function removeWhiteListBatch(address[] memory _addr) public {
-        require(IsAdminLevelTwo[msg.sender] || IsAdminLevelThree[msg.sender],"you don't have permission");
+        require(checkAddrForAdminLevelThree(msg.sender),"you don't have permission");
         for(uint256 i = 0; i < _addr.length ; i++) {
             removeWhiteList(_addr[i]);
 
@@ -1203,48 +1708,44 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     function removeValidNumbers() public onlyOwner{
         validNumbers.pop();
     }
-
-	function donate(uint256 fee) external payable whenNotPaused {
-        
-    require(WhiteListUser[msg.sender], "Not a whitelist user");
-    require(getRate() == 100, "rate error");
-        if(pidStatusForUser){
-            require(IFirePassport(firePassport_).hasPID(msg.sender),"address has no pid");
+ function donate(uint256 fee) external payable whenNotPaused {
+        require(WhiteListUser[msg.sender], "Not a whitelist user");
+        require(getRate() == 100, "rate error");
+        if (pidStatusForUser) {
+            require(IFirePassport(firePassport_).hasPID(msg.sender), "address has no pid");
         }
-    uint256 fdtAmount = (fee * getLatesPrice()) / (10**5 * salePrice);
-    uint256 usdtAmount = fee * getLatesPrice() / (10**8);
-    address downAddr = recommender[msg.sender];
-    address upAddr =  recommender[downAddr];
 
-    require(fdtAmount <= getBalanceOfFDT(), "the contract FDT balance is not enough");
-    require(userTotalBuy[msg.sender] + fee <= userBuyMax, "over limit");
-    require(isValidNumber(fee), "invalid input");
+        uint256 fdtAmount = fee.mul(getLatesPrice()).div(10**5 * salePrice);
+        uint256 usdtAmount = fee.mul(getLatesPrice()).div(10**8);
+        address downAddr = recommender[msg.sender];
+        address upAddr = recommender[downAddr];
 
+        require(fdtAmount <= getBalanceOfFDT(), "the contract FDT balance is not enough");
+        require(userTotalBuy[msg.sender].add(fee) <= userBuyMax, "over limit");
+        require(isValidNumber(fee), "invalid input");
 
-    if (feeOn) {
-        if (msg.value == 0) {
-            for (uint256 i = 0; i < assignAddress.length; i++) {
-                TransferHelper.safeTransferFrom(weth, msg.sender, assignAddress[i], fee * rate[i] / 100);
+            if (msg.value == 0) {
+                for (uint256 i = 0; i < assignAddress.length; i++) {
+                    TransferHelper.safeTransferFrom(weth, msg.sender, assignAddress[i], fee.mul(rate[i]).div(100));
+                }
+                TransferHelper.safeTransferFrom(weth, msg.sender, downAddr, fee.mul(inviteRate[0]).div(100));
+                TransferHelper.safeTransferFrom(weth, msg.sender, upAddr, fee.mul(inviteRate[1]).div(100));
+            } else {
+                require(msg.value == fee, "provide the correct amount of ETH");
+                IWETH(weth).deposit{value: fee}();
+                for (uint256 i = 0; i < assignAddress.length; i++) {
+                    IWETH(weth).transfer(assignAddress[i], fee.mul(rate[i]).div(100));
+                }
+                IWETH(weth).transfer(downAddr, fee.mul(inviteRate[0]).div(100));
+                IWETH(weth).transfer(upAddr, fee.mul(inviteRate[1]).div(100));
             }
-            TransferHelper.safeTransferFrom(weth, msg.sender, downAddr, fee * inviteRate[0] / 100);
-            TransferHelper.safeTransferFrom(weth, msg.sender, upAddr, fee * inviteRate[1] / 100);
 
-        } else {
-            require(msg.value == fee, "provide the correct amount of ETH");
-            IWETH(weth).deposit{value:fee}();
-            for (uint256 i = 0; i < assignAddress.length; i++) {
-                IWETH(weth).transfer(assignAddress[i], fee * rate[i] / 100);
-            }
-            IWETH(weth).transfer(downAddr, fee * inviteRate[0] / 100);
-            IWETH(weth).transfer(upAddr, fee * inviteRate[1] / 100);
-        }
         fdt.transfer(msg.sender, fdtAmount);
-        userTotalBuy[msg.sender] += fee;
-        totalDonate += fee;
-        emit AllRecord(buyId,getPid(msg.sender), getName(msg.sender), msg.sender,upAddr, downAddr, fee, usdtAmount, salePrice, fdtAmount, block.timestamp);
+        userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
+        totalDonate = totalDonate.add(fee);
+        emit AllRecord(buyId, getPid(msg.sender), getName(msg.sender), msg.sender, upAddr, downAddr, fee, usdtAmount, salePrice, fdtAmount, block.timestamp);
         buyId++;
     }
-}
 	function getLatesPrice() public view returns (uint256) {
 		(
 			,
@@ -1286,11 +1787,21 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     function getAssignAddresslength() public view returns(uint256) {
         return assignAddress.length;
     }
+
+
+  function getAdminsLevelTwoList() public view returns(address[] memory) {
+        return adminsLevelTwo.values();
+    }
+      function getAdminsLevelThreeList() public view returns(address[] memory) {
+        return adminsLevelThree.values();
+    }
+
+
     function getAdminsLevelTwoLength() public view returns(uint256) {
-        return adminsLevelTwo.length;
+        return adminsLevelTwo.length();
     }
       function getAdminsLevelThreeLength() public view returns(uint256) {
-        return adminsLevelThree.length;
+        return adminsLevelThree.length();
     }
     function getInviteLength() public view returns(uint256) {
         return recommenderInfo[msg.sender].length;
