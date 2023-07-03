@@ -1345,6 +1345,10 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         string name;
         address user;
     }
+    struct assignAndRate {
+        address assign;
+        uint256 rate;
+    }
 
     EnumerableSet.AddressSet private adminsLevelTwo;
     EnumerableSet.AddressSet private adminsLevelThree;
@@ -1375,8 +1379,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         1750000000000000000,
         2000000000000000000
     ];
-    address[] public assignAddress;
-    uint256[] public rate;
+    assignAndRate[] public assignAndRates;
     whiteList[] public ShowWhiteList;
     mapping(address => whiteList[]) public adminInviter;
     mapping(address => bool) public WhiteListUser;
@@ -1384,7 +1387,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     mapping(address => bool) public isRecommender;
     mapping(address => address) public recommender;
     mapping(address => address[]) public recommenderInfo;
-    mapping(address => address[]) public setAdminsForTwo;
+    // mapping(address => address[]) public setAdminsForTwo;
     mapping(address => address[]) public userSetAdminsForThree;
 	AggregatorV3Interface internal priceFeed;
     event AllRecord(uint256 no,uint256 pid, string name,  address addr,address addrTow,address addrThree,uint256 ethAmount,uint256 usdtAmount,uint256 rate,uint256 fdtAmount,uint256 time);
@@ -1467,7 +1470,6 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
 
     }
     function setAdminLevelTwo(address[] memory _addr) public onlyOwner{
-        require(setAdminsForTwo[msg.sender].length.add(_addr.length) < adminLevelTwoMax, "You cannot exceed the maximum limit");
         for(uint i = 0; i < _addr.length;i++){
             if(pidStatusForAdmin){
                 require(IFirePassport(firePassport_).hasPID(_addr[i]),"address has no pid");
@@ -1479,7 +1481,6 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
              recommenderInfo[msg.sender].push(_addr[i]);
              isRecommender[_addr[i]] = true;
             adminsLevelTwo.add(_addr[i]);
-            setAdminsForTwo[msg.sender].push(_addr[i]);
             emit adminLevelTwo(getPid(_addr[i]), getName(_addr[i]), _addr[i]);
         }else{
             revert("Please check and re-enter if the input is wrong");
@@ -1523,6 +1524,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     function removeAdminLevelThree(address _addr) public {
         require(checkAddrForAdminLevelTwo(msg.sender) && checkAddrForAdminLevelThree(_addr),"you are not an level two administrator");
         adminsLevelThree.remove(_addr);
+        removeThree(msg.sender, _addr);
         emit reAdminLevelThree(getPid(_addr), getName(_addr), _addr);
     }
  
@@ -1616,19 +1618,22 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     function addAssignAddressAndRatio(address[] memory _addr, uint256[] memory _rate) public onlyOwner{
         require(_addr.length == _rate.length, 'Please enter the correct address and ratio');
         require(getRate() <= 100 , 'The non-allocation ratio exceeds the limit, please modify the allocation ratio first');
-        if(assignAddress.length > 0 ) {
+        if(assignAndRates.length > 0 ) {
             for(uint i = 0 ; i < _addr.length; i ++) {
                require(checkRepeat(_addr[i]), 'The added address is duplicated, please readjust and add again') ;
             }
         }
         for(uint i = 0 ; i < _addr.length; i++) {
-            assignAddress.push(_addr[i]);
-            rate.push(_rate[i]);
+            // assignAddress.push(_addr[i]);
+            // rate.push(_rate[i]);
+            assignAndRate memory ar = assignAndRate({assign:_addr[i],rate:_rate[i]});
+            assignAndRates.push(ar);
         }
     }
+
     function checkRepeat(address _addr) internal view returns(bool){
-        for(uint256 i = 0 ; i < assignAddress.length ; i ++) {
-            if(_addr == assignAddress[i]) {
+        for(uint256 i = 0 ; i < assignAndRates.length ; i ++) {
+            if(_addr == assignAndRates[i].assign) {
                 return false;
             }
         }
@@ -1636,12 +1641,10 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     }
     function removeAssiginAddressAndRatio(address[] memory _addr) public onlyOwner{
         for(uint256 j = 0 ; j < _addr.length ;j ++ ) {
-        for(uint256 i = 0; i < assignAddress.length ; i++){
-            if(assignAddress[i] == _addr[j]) {
-                assignAddress[i] = assignAddress[assignAddress.length - 1];
-                rate[i] = rate[rate.length -1];
-                assignAddress.pop();
-                rate.pop();
+        for(uint256 i = 0; i < assignAndRates.length ; i++){
+            if(assignAndRates[i].assign == _addr[j]) {
+                assignAndRates[i] = assignAndRates[assignAndRates.length - 1];
+                assignAndRates.pop();
                 return;
             }
         }
@@ -1652,23 +1655,26 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
 
 
     function setAssignAddressAndRatio(uint256 _id, address _addr,uint256 _rate) public onlyOwner{
-        require(_id < assignAddress.length, "The address doesn't exist");
-        assignAddress[_id] = _addr;
-        rate[_id] = _rate;
+        require(_id < assignAndRates.length, "The address doesn't exist");
+        assignAndRates[_id] = assignAndRate({
+            assign: _addr,
+            rate: _rate
+        });
 
     }
    
     function addInviteRate(uint256[] memory _rate) public onlyOwner{
-        require(getRate() <= 100,"The rate must be within one hundred");
         require(!initRate,"If you have added modifications, please call the following method");
         require(_rate.length == 2 || inviteRate.length < 2 , "input error");
         for(uint256 i = 0; i < _rate.length; i++) {
             inviteRate.push(_rate[i]);
         }
+        require(getRate() < 100,"The rate must be within one hundred");
         initRate = true;
 
     }
     function setInviteRate(uint256 _id , uint256 _rate) public onlyOwner{
+        require(getRate() <= 100,"The rate must be within one hundred");
         require(_id < inviteRate.length, 'input error');
         inviteRate[_id] = _rate;
     }
@@ -1676,9 +1682,9 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     function getRate() public view returns(uint256){
         uint256 total;
         uint256 _inviteRate;
-        for(uint i = 0; i<rate.length; i++){
+        for(uint i = 0; i<assignAndRates.length; i++){
         
-            total+= rate[i];
+            total+= assignAndRates[i].rate;
         }
         for(uint i = 0 ; i< inviteRate.length ; i ++ ){
                 _inviteRate += inviteRate[i];
@@ -1721,16 +1727,16 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         require(isValidNumber(fee), "invalid input");
 
             if (msg.value == 0) {
-                for (uint256 i = 0; i < assignAddress.length; i++) {
-                    TransferHelper.safeTransferFrom(weth, msg.sender, assignAddress[i], fee.mul(rate[i]).div(100));
+                for (uint256 i = 0; i < assignAndRates.length; i++) {
+                    TransferHelper.safeTransferFrom(weth, msg.sender, assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(100));
                 }
                 TransferHelper.safeTransferFrom(weth, msg.sender, downAddr, fee.mul(inviteRate[0]).div(100));
                 TransferHelper.safeTransferFrom(weth, msg.sender, upAddr, fee.mul(inviteRate[1]).div(100));
             } else {
                 require(msg.value == fee, "provide the correct amount of ETH");
                 IWETH(weth).deposit{value: fee}();
-                for (uint256 i = 0; i < assignAddress.length; i++) {
-                    IWETH(weth).transfer(assignAddress[i], fee.mul(rate[i]).div(100));
+                for (uint256 i = 0; i < assignAndRates.length; i++) {
+                    IWETH(weth).transfer(assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(100));
                 }
                 IWETH(weth).transfer(downAddr, fee.mul(inviteRate[0]).div(100));
                 IWETH(weth).transfer(upAddr, fee.mul(inviteRate[1]).div(100));
@@ -1780,8 +1786,8 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     function getWhiteListLength() public view returns(uint256) {
         return ShowWhiteList.length;
     }
-    function getAssignAddresslength() public view returns(uint256) {
-        return assignAddress.length;
+    function getAssignAndRateslength() public view returns(uint256) {
+        return assignAndRates.length;
     }
 
 
@@ -1801,9 +1807,6 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     }
     function getInviteLength() public view returns(uint256) {
         return recommenderInfo[msg.sender].length;
-    }
-    function getRateLength() public view returns(uint256){
-        return rate.length;
     }
     function getfdtAmount(uint256 fee) public view returns(uint256) {
 	return (fee*getLatesPrice()/10**5)/salePrice;
