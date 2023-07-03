@@ -81,14 +81,22 @@ contract flame is ERC20 , ERC20Permit, ERC20Votes,Ownable{
 
     receive() external payable {}
     function addRouter(address _router) public {
-        require(routers.contains(_router) == true,"This router does not exist");
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(_router);
-        address _uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
+        address _uniswapV2Pair;
+        IUniswapV2Router02 _uniswapV2Router;
+        if(routers.contains(_router) == true){
+         _uniswapV2Router = IUniswapV2Router02(_router);
+         _uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
+        .getPair(address(this), _uniswapV2Router.WETH());
+        }else if(routers.contains(_router) == false){
+         _uniswapV2Router = IUniswapV2Router02(_router);
+         _uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
         .createPair(address(this), _uniswapV2Router.WETH());
+        }
         wethAddress[_uniswapV2Pair] = _uniswapV2Router.WETH();
         routerAddress[_uniswapV2Pair] = _router;
         routers.add(_router);
         pairs.add(_uniswapV2Pair);
+
     }
     function removeRouter(address _router) external onlyOwner{
         require(routers.contains(_router) == true,"This router does not exist");
