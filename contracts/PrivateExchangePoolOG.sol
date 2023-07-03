@@ -1350,7 +1350,6 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     EnumerableSet.AddressSet private adminsLevelThree;
 
 	ERC20 public fdt;
-	bool public feeOn;
     bool public pidStatusForAdmin;
     bool public pidStatusForUser;
     bool public initRate;
@@ -1415,7 +1414,6 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         adminLevelThreeMax = 10;
         maxTwo = 50;
         maxThree = 50;
-		feeOn = true;
         userBuyMax = 2000000000000000000;
         firePassport_ = _firePassport;
 	}
@@ -1444,9 +1442,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     function setPidStatusForUser() public onlyOwner {
         pidStatusForUser = !pidStatusForUser;
     }
-	function setFeeStatus() public onlyOwner{
-      	feeOn = !feeOn;
-   	}
+
     function setUserBuyMax(uint256 _amount) public onlyOwner{
         userBuyMax = _amount;
     }
