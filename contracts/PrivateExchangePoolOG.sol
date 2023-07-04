@@ -1474,7 +1474,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
             if(pidStatusForAdmin){
                 require(IFirePassport(firePassport_).hasPID(_addr[i]),"address has no pid");
             }
-            require(checkAddrForAdminLevelTwo(_addr[i]),"This address is already an administrator for level two");
+            require(!checkAddrForAdminLevelTwo(_addr[i]),"This address is already an administrator for level two");
             require(!isRecommender[_addr[i]],"This address has already been invited");
            if (recommender[_addr[i]] == address(0) &&  recommender[msg.sender] != _addr[i] && !isRecommender[_addr[i]]) {
              recommender[_addr[i]] = msg.sender;
@@ -1498,7 +1498,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
             if(pidStatusForAdmin){
                 require(IFirePassport(firePassport_).hasPID(_addr[i]),"address has no pid");
             }
-            require(checkAddrForAdminLevelThree(_addr[i]),"This address is already an administrator for level three");
+            require(!checkAddrForAdminLevelThree(_addr[i]),"This address is already an administrator for level three");
             require(!isRecommender[_addr[i]],"This address has already been added");
            if (recommender[_addr[i]] == address(0) &&  recommender[msg.sender] != _addr[i] && !isRecommender[_addr[i]] ) {
              recommender[_addr[i]] = msg.sender;
@@ -1617,18 +1617,18 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     }
     function addAssignAddressAndRatio(address[] memory _addr, uint256[] memory _rate) public onlyOwner{
         require(_addr.length == _rate.length, 'Please enter the correct address and ratio');
-        require(getRate() <= 100 , 'The non-allocation ratio exceeds the limit, please modify the allocation ratio first');
+        require(initRate, 'please initial addInviteRate()');
         if(assignAndRates.length > 0 ) {
             for(uint i = 0 ; i < _addr.length; i ++) {
                require(checkRepeat(_addr[i]), 'The added address is duplicated, please readjust and add again') ;
             }
         }
         for(uint i = 0 ; i < _addr.length; i++) {
-            // assignAddress.push(_addr[i]);
-            // rate.push(_rate[i]);
             assignAndRate memory ar = assignAndRate({assign:_addr[i],rate:_rate[i]});
             assignAndRates.push(ar);
         }
+        require(getRate() <= 100 , 'The non-allocation ratio exceeds the limit, please modify the allocation ratio first');
+
     }
 
     function checkRepeat(address _addr) internal view returns(bool){
@@ -1674,9 +1674,10 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
 
     }
     function setInviteRate(uint256 _id , uint256 _rate) public onlyOwner{
-        require(getRate() <= 100,"The rate must be within one hundred");
         require(_id < inviteRate.length, 'input error');
         inviteRate[_id] = _rate;
+        require(getRate() <= 100,"The rate must be within one hundred");
+
     }
 
     function getRate() public view returns(uint256){
