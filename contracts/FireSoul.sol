@@ -1403,7 +1403,7 @@ contract FireSoul is ERC721,Ownable{
     SBT003_RATE_TWO = 20;
     SBT003_RATE_THREE = 10;
 
-    baseURI = "https://bafybeidfu5kotsr2tap72pg6uuipv7yhb47pcnzidcxqszg5z2vrewsdce.ipfs.nftstorage.link/";
+    baseURI = "https://bafybeibjssse6npb5gqh7pkcuvvvgyr6k7xu5q6eaxq7kp3azgdfgj4exy.ipfs.nftstorage.link/";
 
 
 }
