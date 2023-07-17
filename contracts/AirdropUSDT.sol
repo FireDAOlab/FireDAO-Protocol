@@ -29,6 +29,8 @@ contract airdropUSDT is Ownable {
     mapping(address => uint256) public userTotalClaim;
     mapping(address => address) public fromLevelTwo;
     mapping(address => address[]) public levelTwoAdds;
+    event Claimed(uint pid,string username ,uint fid,address user, uint256 amount);
+
     event ClaimRecord(uint256 id,uint pid,string username ,uint fid,address user, uint256 amount);
 
     modifier onlyAdminTwo {
@@ -43,6 +45,9 @@ contract airdropUSDT is Ownable {
     constructor(address _token, address _firePassport, address _fireSoul) {
         usdt = _token;
         firePassport = _firePassport;
+        fireSoul = _fireSoul;
+    }
+     function setFireSoulAddr(address _fireSoul) public onlyOwner {
         fireSoul = _fireSoul;
     }
     function setUsdt(address _usdt) public onlyOwner {
@@ -91,14 +96,17 @@ contract airdropUSDT is Ownable {
         for(uint256 i = 0; i< _addr.length ; i++){
             if(checkIsNotWhiteListUser(_addr[i])){
                 airDropListInfos[checkUserId(_addr[i])].amount += _amount[i];
-                return;
-            }
+            }else{
+
             fromLevelTwo[_addr[i]] = msg.sender;
             levelTwoAdds[msg.sender].push(_addr[i]);
             airDropList.add(_addr[i]);
             airDropListInfo memory info = airDropListInfo({user:_addr[i], amount:_amount[i],introduction:_info });
             airDropListInfos.push(info);
+            }
+
             emit ClaimRecord(id,getPid(_addr[i]),getName(_addr[i]), getFid(_addr[i]), _addr[i], _amount[i]);
+
             id++;
         }
     }
@@ -134,9 +142,13 @@ contract airdropUSDT is Ownable {
     }
     function Claim(uint256 _amount) public onlyWhiteListUser{
         require(checkUserCanClaim(msg.sender) >= _amount, "Insufficient quantity available for extraction");
+        require(contractAmount()> _amount,"Insufficient quantity available for extraction");
+
         IERC20(usdt).transfer(msg.sender, _amount);
         reduceAmount(msg.sender,_amount);
         userTotalClaim[msg.sender] += _amount;
+        emit Claimed(getPid(msg.sender),getName(msg.sender), getFid(msg.sender), msg.sender, _amount);
+
     }
     function getName(address _user) public view returns(string memory){
         if(IFirePassport(firePassport).hasPID(_user)){
@@ -170,5 +182,8 @@ contract airdropUSDT is Ownable {
     }
     function getAdminAddsLength(address _user) external view returns(uint256) {
         return levelTwoAdds[_user].length;
+    }
+    function contractAmount() public view returns(uint256){
+        return IERC20(usdt).balanceOf(address(this));
     }
 } 
