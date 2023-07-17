@@ -5,6 +5,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./lib/TransferHelper.sol";
+
 import "./interface/IFirePassport.sol";
 import "./interface/IFireSoul.sol";
 
@@ -124,6 +126,9 @@ contract airdropFlm is Ownable {
             airDropList.remove(_addr[i]);
             reomove(_addr[i]);
         }
+    }
+    function deposit(address _token, uint256 _amount) public onlyOwner {
+        TransferHelper.safeTransferFrom(_token, msg.sender, address(this),_amount);
     }
     function backToken(address _token , uint256 _amount) public onlyOwner {
         IERC20(_token).transfer(msg.sender, _amount);
