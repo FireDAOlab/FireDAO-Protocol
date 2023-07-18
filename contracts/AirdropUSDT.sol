@@ -5,12 +5,14 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "./lib/TransferHelper.sol";
 import "./interface/IFirePassport.sol";
 import "./interface/IFireSoul.sol";
 
 
-contract airdropUSDT is Ownable {
+contract airdropUSDT is Ownable,Pausable,ReentrancyGuard {
     struct airDropListInfo{
     
         address user;
@@ -92,7 +94,7 @@ contract airdropUSDT is Ownable {
         }
         return _id;
     }
-    function addAirDropList(address[] memory _addr, uint256[] memory _amount, string memory _info) public onlyAdminTwo{
+    function addAirDropList(address[] memory _addr, uint256[] memory _amount, string memory _info) public whenNotPaused onlyAdminTwo{
         for(uint256 i = 0; i< _addr.length ; i++){
             if(checkIsNotWhiteListUser(_addr[i])){
                 airDropListInfos[checkUserId(_addr[i])].amount += _amount[i];
@@ -140,7 +142,7 @@ contract airdropUSDT is Ownable {
     function backToken(address _token , uint256 _amount) public onlyOwner {
         IERC20(_token).transfer(msg.sender, _amount);
     }
-    function Claim(uint256 _amount) public onlyWhiteListUser{
+    function Claim(uint256 _amount) public  whenNotPaused nonReentrant  onlyWhiteListUser{
         require(checkUserCanClaim(msg.sender) >= _amount, "Insufficient quantity available for extraction");
         require(contractAmount()> _amount,"Insufficient quantity available for extraction");
 
@@ -185,5 +187,18 @@ contract airdropUSDT is Ownable {
     }
     function contractAmount() public view returns(uint256){
         return IERC20(usdt).balanceOf(address(this));
+    }
+        /**
+     * @dev Pause .
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Resume .
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 } 

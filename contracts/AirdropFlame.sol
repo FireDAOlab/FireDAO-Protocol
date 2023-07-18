@@ -5,12 +5,14 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "./lib/TransferHelper.sol";
 import "./interface/IFirePassport.sol";
 import "./interface/IFireSoul.sol";
 
 
-contract airdropFlm is Ownable {
+contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
     struct airDropListInfo{
     
         address user;
