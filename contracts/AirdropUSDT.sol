@@ -5,12 +5,14 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "./lib/TransferHelper.sol";
 import "./interface/IFirePassport.sol";
 import "./interface/IFireSoul.sol";
 
 
-contract airdropUSDT is Ownable {
+contract airdropUSDT is Ownable,Pausable,ReentrancyGuard {
     struct airDropListInfo{
     
         address user;
@@ -29,6 +31,8 @@ contract airdropUSDT is Ownable {
     mapping(address => uint256) public userTotalClaim;
     mapping(address => address) public fromLevelTwo;
     mapping(address => address[]) public levelTwoAdds;
+    event Claimed(uint pid,string username ,uint fid,address user, uint256 amount);
+
     event ClaimRecord(uint256 id,uint pid,string username ,uint fid,address user, uint256 amount);
 
     modifier onlyAdminTwo {
@@ -43,6 +47,9 @@ contract airdropUSDT is Ownable {
     constructor(address _token, address _firePassport, address _fireSoul) {
         usdt = _token;
         firePassport = _firePassport;
+        fireSoul = _fireSoul;
+    }
+     function setFireSoulAddr(address _fireSoul) public onlyOwner {
         fireSoul = _fireSoul;
     }
     function setUsdt(address _usdt) public onlyOwner {
@@ -87,18 +94,21 @@ contract airdropUSDT is Ownable {
         }
         return _id;
     }
-    function addAirDropList(address[] memory _addr, uint256[] memory _amount, string memory _info) public onlyAdminTwo{
+    function addAirDropList(address[] memory _addr, uint256[] memory _amount, string memory _info) public whenNotPaused onlyAdminTwo{
         for(uint256 i = 0; i< _addr.length ; i++){
             if(checkIsNotWhiteListUser(_addr[i])){
                 airDropListInfos[checkUserId(_addr[i])].amount += _amount[i];
-                return;
-            }
+            }else{
+
             fromLevelTwo[_addr[i]] = msg.sender;
             levelTwoAdds[msg.sender].push(_addr[i]);
             airDropList.add(_addr[i]);
             airDropListInfo memory info = airDropListInfo({user:_addr[i], amount:_amount[i],introduction:_info });
             airDropListInfos.push(info);
+            }
+
             emit ClaimRecord(id,getPid(_addr[i]),getName(_addr[i]), getFid(_addr[i]), _addr[i], _amount[i]);
+
             id++;
         }
     }
@@ -132,11 +142,15 @@ contract airdropUSDT is Ownable {
     function backToken(address _token , uint256 _amount) public onlyOwner {
         IERC20(_token).transfer(msg.sender, _amount);
     }
-    function Claim(uint256 _amount) public onlyWhiteListUser{
+    function Claim(uint256 _amount) public  whenNotPaused nonReentrant  onlyWhiteListUser{
         require(checkUserCanClaim(msg.sender) >= _amount, "Insufficient quantity available for extraction");
+        require(contractAmount()> _amount,"Insufficient quantity available for extraction");
+
         IERC20(usdt).transfer(msg.sender, _amount);
         reduceAmount(msg.sender,_amount);
         userTotalClaim[msg.sender] += _amount;
+        emit Claimed(getPid(msg.sender),getName(msg.sender), getFid(msg.sender), msg.sender, _amount);
+
     }
     function getName(address _user) public view returns(string memory){
         if(IFirePassport(firePassport).hasPID(_user)){
@@ -170,5 +184,21 @@ contract airdropUSDT is Ownable {
     }
     function getAdminAddsLength(address _user) external view returns(uint256) {
         return levelTwoAdds[_user].length;
+    }
+    function contractAmount() public view returns(uint256){
+        return IERC20(usdt).balanceOf(address(this));
+    }
+        /**
+     * @dev Pause .
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Resume .
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 } 
