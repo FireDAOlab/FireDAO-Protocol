@@ -80,7 +80,7 @@ contract flame is ERC20 , ERC20Permit, ERC20Votes,Ownable{
     }
 
     receive() external payable {}
-    function addRouter(address _router) public {
+    function addRouter(address _router) public onlyOwner{
         address _uniswapV2Pair;
         IUniswapV2Router02 _uniswapV2Router;
         if(routers.contains(_router) == true){
