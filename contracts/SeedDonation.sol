@@ -10,6 +10,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interface/ISbt001.sol";
 import "./interface/IFireSeed.sol";
 import "./interface/IWETH.sol";
+import "./FDT-OG.sol";
+
 contract SeedDonation is Ownable,Pausable,ReentrancyGuard{
     using SafeMath for uint256;
     struct lockDetail{
@@ -52,8 +54,8 @@ contract SeedDonation is Ownable,Pausable,ReentrancyGuard{
         FireSeed = _fireSeed;
         WETH = _weth;
     }
-    function withdraw(address _to,uint _amount) external onlyOwner {
-        FDT.transfer(_to,_amount);
+    function withdraw(IERC20 _token,address _to,uint _amount) external onlyOwner {
+        _token.transfer(_to,_amount);
     }
     function changeFIDDiscount(uint _discount) external onlyOwner {
         FIDDiscount = _discount;
