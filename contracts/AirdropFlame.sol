@@ -848,21 +848,25 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
         string introduction;
     }
     address firePassport;
-    uint256 private id;
+    uint256 public id;
+    uint256 public decId;
     address public flm;
     uint256 public batch;
+    uint256 public decBatch;
+    uint256 public fixId;
     using EnumerableSet for EnumerableSet.AddressSet;
     airDropListInfo[] public airDropListInfos;
     EnumerableSet.AddressSet private adminsLevelTwo;
     EnumerableSet.AddressSet private airDropList;
-    mapping (address => uint256) public userIds;
     mapping(address => uint256) public userTotalClaim;
     mapping(address => address) public fromLevelTwo;
     mapping(address => address[]) public levelTwoAdds;
     event Claimed(uint pid,string username ,address user, uint256 amount);
-    event ClaimRecord(uint256 batch, uint256 id,uint pid,string username ,address user, uint256 amount,string info);
+    event ClaimRecord(uint256 batch,uint pid,uint256 id,string username ,address user,address operater, uint256 amount,string info);
+    event decUserAmount(uint256 batch,uint pid, uint256 id,string username ,address user,address operater, uint256 amount,string info);
+    event fixEvent(uint256 id, string title, address operater, uint pid, string username, address user,uint256 amount);
     event depositRecord(uint pid , string username, address user,uint256 amount);
-    event deleteUser(address user, uint256 amount);
+
 
 
     modifier onlyAdminTwo {
@@ -885,6 +889,7 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
 
     function setAdminsLevelTwo(address[] memory _addr) public onlyOwner{
         for(uint256 i = 0 ; i < _addr.length ; i ++){
+            require(!checkIsNotAdminsLevelTwo(_addr[i]), "the address is already admin level two");
             adminsLevelTwo.add(_addr[i]);
         }
     }   
@@ -900,6 +905,7 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
         for(uint256 i =0 ; i< airDropListInfos.length ; i++){
             if(_addr == airDropListInfos[i].user){
                 total = airDropListInfos[i].amount;
+                break;
             }
         }
         return total;
@@ -907,14 +913,46 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
   
     function removeAdminsLevelTwo(address[] memory _addr) public onlyOwner {
            for(uint256 i = 0 ; i < _addr.length ; i ++){
-               require(checkIsNotAdminsLevelTwo(_addr[i]), 'the address is not admin level two');
+            require(checkIsNotAdminsLevelTwo(_addr[i]), 'the address is not admin level two');
             adminsLevelTwo.remove(_addr[i]);
         }
     }
     function checkUserId(address _addr) internal view returns(uint256) {
-         return userIds[_addr];
+        uint256 user_id = 0;
+        for(uint256 i = 0; i < airDropListInfos.length;i++){
+            if(_addr == airDropListInfos[i].user){
+                user_id = i;
+                break;
+            }
+        }
+        return user_id;
     }
-    function addAirDropList(address[] memory _addr, uint256[] memory _amount, string memory _info) public whenNotPaused onlyAdminTwo{
+    function setUserAmount(address[] memory _user, uint256[] memory _amount,string[] memory _title) public onlyOwner {
+        for(uint256 i = 0; i<_user.length; i++){
+        require(checkIsNotWhiteListUser(_user[i]),"the address is not belong airdrop list");
+        airDropListInfos[checkUserId(_user[i])].amount = _amount[i];
+        emit fixEvent(fixId,  _title[i],  msg.sender, getPid(_user[i]), getName(_user[i]), _user[i], _amount[i]);
+        fixId ++;
+        }
+    }
+    function fixEventForClaimRecord(address[] memory user, uint256[] memory amount,string[] memory info) public onlyOwner{
+        for(uint256 i =0; i<user.length;i++){
+        emit ClaimRecord(batch,getPid(user[i]),id, getName(user[i]),user[i],msg.sender,amount[i],info[i]);
+        id ++;
+        }
+        batch++;
+    }
+    function fixUserTotalClaim(address[] memory _user,uint256[] memory _amount) public onlyOwner {
+        for(uint256 i = 0 ; i<_user.length; i++){
+            userTotalClaim[_user[i]] = _amount[i];
+        }
+    }
+    function fixEventForClaimed(address[] memory _user, uint256[] memory _amount) public onlyOwner {
+        for(uint256 i = 0 ; i < _user.length; i++){
+        emit Claimed( getPid(_user[i]), getName(_user[i]) , _user[i],  _amount[i]);
+        }
+    }
+    function fixAirDropList(address[] memory _addr, uint256[] memory _amount, string memory _info) public onlyOwner{
         for(uint256 i = 0; i< _addr.length ; i++){
             if(checkIsNotWhiteListUser(_addr[i])){
                 airDropListInfos[checkUserId(_addr[i])].amount += _amount[i];
@@ -924,23 +962,31 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
             airDropList.add(_addr[i]);
             airDropListInfo memory info = airDropListInfo({user:_addr[i], amount:_amount[i],introduction:_info });
             airDropListInfos.push(info);
-            userIds[_addr[i]] = airDropListInfos.length - 1;
-
             }
-            emit ClaimRecord(batch,id,getPid(_addr[i]),getName(_addr[i]), _addr[i], _amount[i], _info);
+        }
+    }
+    function fixDepositRecord(address[] memory _user, uint256[] memory _amount) public onlyOwner{
+        for(uint256 i = 0 ; i< _user.length ; i++){
+        emit depositRecord( getPid(msg.sender) ,  getName(msg.sender),  _user[i], _amount[i]);
+        }
+    }
+    function addAirDropList(address[] memory _addr, uint256[] memory _amount, string memory _info) public whenNotPaused nonReentrant onlyAdminTwo{
+        for(uint256 i = 0; i< _addr.length ; i++){
+            if(checkIsNotWhiteListUser(_addr[i])){
+                airDropListInfos[checkUserId(_addr[i])].amount += _amount[i];
+            }else{
+            fromLevelTwo[_addr[i]] = msg.sender;
+            levelTwoAdds[msg.sender].push(_addr[i]);
+            airDropList.add(_addr[i]);
+            airDropListInfo memory info = airDropListInfo({user:_addr[i], amount:_amount[i],introduction:_info });
+            airDropListInfos.push(info);
+            }
+            emit ClaimRecord(batch,id,getPid(_addr[i]),getName(_addr[i]), _addr[i],msg.sender, _amount[i], _info);
             id++;
         }
         batch++;
     }
-    function reomove(address _addr) internal {
-        for(uint256 i = 0 ; i < airDropListInfos.length; i++){
-            if(_addr == airDropListInfos[i].user){
-                airDropListInfos[i] = airDropListInfos[airDropListInfos.length -1 ];
-                airDropListInfos.pop();
-                break;
-            }
-        }
-    }
+
     function reduceAmount(address _addr,uint256 _amount) internal {
             for(uint256 i = 0 ; i < airDropListInfos.length; i++){
             if(_addr == airDropListInfos[i].user){
@@ -949,34 +995,22 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
             }
         }
     }
-        function deleteUserAmount(address _addr)  internal {
-           for(uint256 i = 0 ; i < airDropListInfos.length; i++){
-            if(_addr == airDropListInfos[i].user){
-                airDropListInfos[i].amount = 0;
-                break;
-            }
-        }
-    }
-    function getUserAmount(address _addr) internal view returns(uint256) {
-            uint256 userAmount = 0;
+    function checkUserAmount(address _user, uint256 _amount) internal view {
             for(uint256 i = 0 ; i < airDropListInfos.length; i++){
-            if(_addr == airDropListInfos[i].user){
-               userAmount =  airDropListInfos[i].amount;
-               break;
+            if(_user == airDropListInfos[i].user){
+            require(airDropListInfos[i].amount >= _amount, "amount error" );
             }
         }
-        return userAmount;
     }
-    function removeWhiteList( address[] memory _addr) public onlyAdminTwo {
-         for(uint256 i = 0; i< _addr.length ; i++){
-             require(checkIsNotWhiteListUser(_addr[i]),'the address is not whitelist user');
-            airDropList.remove(_addr[i]);
-            reomove(_addr[i]);
-            emit deleteUser(_addr[i], getUserAmount(_addr[i]));
-            deleteUserAmount(_addr[i]);
-
-
+    function decAirDropAmount( address[] memory _addr,uint256[] memory _amount,string memory info) public onlyAdminTwo {
+        for(uint256 i = 0; i < _addr.length; i ++) {
+            require(checkIsNotWhiteListUser(_addr[i]),"the address is not airdrop user");
+            checkUserAmount(_addr[i], _amount[i]);
+            reduceAmount(_addr[i], _amount[i]);
+            emit decUserAmount( decBatch,getPid(_addr[i]),decId, getName(_addr[i]) ,_addr[i], msg.sender,  _amount[i], info);
+            decId++;
         }
+        decBatch ++;
     }
     function deposit(address _token, uint256 _amount) public onlyOwner {
         TransferHelper.safeTransferFrom(_token, msg.sender, address(this),_amount);
@@ -992,7 +1026,6 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
         reduceAmount(msg.sender,_amount);
         userTotalClaim[msg.sender] += _amount;
         emit Claimed(getPid(msg.sender),getName(msg.sender),  msg.sender, _amount);
-
     }
     function getName(address _user) public view returns(string memory){
         if(IFirePassport(firePassport).hasPID(_user)){
@@ -1010,13 +1043,13 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
     function getAdminsLevelTwoList() external view returns(address[] memory){
         return adminsLevelTwo.values();
     }
-    function getWhiteList() external view returns(address[] memory) {
+    function getAirDropList() external view returns(address[] memory) {
         return airDropList.values();
     }
    function getAdminsLevelTwoLength() external view returns (uint256) {
         return adminsLevelTwo.length();
     }
-    function getWhiteListLength() external view returns(uint256) {
+    function getAirDropListLength() external view returns(uint256) {
         return airDropList.length();
     }
     function getAdminAddsLength(address _user) external view returns(uint256) {
