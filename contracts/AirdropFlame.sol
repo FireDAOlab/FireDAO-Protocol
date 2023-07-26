@@ -827,26 +827,241 @@ library EnumerableSet {
     }
 }
 
+// OpenZeppelin Contracts (last updated v4.6.0) (utils/math/SafeMath.sol)
+
+pragma solidity ^0.8.0;
+
+// CAUTION
+// This version of SafeMath should only be used with Solidity 0.8 or later,
+// because it relies on the compiler's built in overflow checks.
+
+/**
+ * @dev Wrappers over Solidity's arithmetic operations.
+ *
+ * NOTE: `SafeMath` is generally not needed starting with Solidity 0.8, since the compiler
+ * now has built in overflow checking.
+ */
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, with an overflow flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            uint256 c = a + b;
+            if (c < a) return (false, 0);
+            return (true, c);
+        }
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, with an overflow flag.
+     *
+     * _Available since v3.4._
+     */
+    function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b > a) return (false, 0);
+            return (true, a - b);
+        }
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+            // benefit is lost if 'b' is also tested.
+            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+            if (a == 0) return (true, 0);
+            uint256 c = a * b;
+            if (c / a != b) return (false, 0);
+            return (true, c);
+        }
+    }
+
+    /**
+     * @dev Returns the division of two unsigned integers, with a division by zero flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b == 0) return (false, 0);
+            return (true, a / b);
+        }
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b == 0) return (false, 0);
+            return (true, a % b);
+        }
+    }
+
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     *
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a + b;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a - b;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     *
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a * b;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers, reverting on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator.
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a / b;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * reverting when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a % b;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
+     * overflow (when the result is negative).
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {trySub}.
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        unchecked {
+            require(b <= a, errorMessage);
+            return a - b;
+        }
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers, reverting with custom message on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        unchecked {
+            require(b > 0, errorMessage);
+            return a / b;
+        }
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * reverting with custom message when dividing by zero.
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {tryMod}.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        unchecked {
+            require(b > 0, errorMessage);
+            return a % b;
+        }
+    }
+}
+
 // File: contracts/AirdropFlame.sol
 
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-
-
-
-
-
-
-
-
-
 contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
-    struct airDropListInfo{
-        address user;
-        uint256 amount;
-        string introduction;
-    }
+  
+    using SafeMath for uint256;
     address firePassport;
     uint256 public id;
     uint256 public decId;
@@ -855,19 +1070,16 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
     uint256 public decBatch;
     uint256 public fixId;
     using EnumerableSet for EnumerableSet.AddressSet;
-    airDropListInfo[] public airDropListInfos;
     EnumerableSet.AddressSet private adminsLevelTwo;
     EnumerableSet.AddressSet private airDropList;
     mapping(address => uint256) public userTotalClaim;
-    mapping(address => address) public fromLevelTwo;
     mapping(address => address[]) public levelTwoAdds;
+    mapping(address => uint256) public airDropListAmount;
     event Claimed(uint pid,string username ,address user, uint256 amount);
-    event ClaimRecord(uint256 batch,uint pid,uint256 id,string username ,address user,address operater, uint256 amount,string info);
-    event decUserAmount(uint256 batch,uint pid, uint256 id,string username ,address user,address operater, uint256 amount,string info);
-    event fixEvent(uint256 id, string title, address operater, uint pid, string username, address user,uint256 amount);
+    event ClaimRecord(uint256 batch,uint256 id,address user,address operater, uint256 amount,string info);
+    event decUserAmount(uint256 batch, uint256 id,address user,address operater, uint256 amount,string info);
+    event fixEvent(uint256 id, string title, address operater,  address user,uint256 amount);
     event depositRecord(uint pid , string username, address user,uint256 amount);
-
-
 
     modifier onlyAdminTwo {
         require(checkIsNotAdminsLevelTwo(msg.sender),'you are not admin level two');
@@ -901,14 +1113,7 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
     }
     
     function checkUserCanClaim(address _addr) public view returns(uint256) {
-        uint256 total = 0 ;
-        for(uint256 i =0 ; i< airDropListInfos.length ; i++){
-            if(_addr == airDropListInfos[i].user){
-                total = airDropListInfos[i].amount;
-                break;
-            }
-        }
-        return total;
+        return airDropListAmount[_addr];
     }
   
     function removeAdminsLevelTwo(address[] memory _addr) public onlyOwner {
@@ -917,27 +1122,19 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
             adminsLevelTwo.remove(_addr[i]);
         }
     }
-    function checkUserId(address _addr) internal view returns(uint256) {
-        uint256 user_id = 0;
-        for(uint256 i = 0; i < airDropListInfos.length;i++){
-            if(_addr == airDropListInfos[i].user){
-                user_id = i;
-                break;
-            }
-        }
-        return user_id;
-    }
-    function setUserAmount(address[] memory _user, uint256[] memory _amount,string[] memory _title) public onlyOwner {
+  
+    function setUserAmount(address[] memory _user, uint256[] memory _amount,string memory _title) public onlyOwner {
         for(uint256 i = 0; i<_user.length; i++){
         require(checkIsNotWhiteListUser(_user[i]),"the address is not belong airdrop list");
-        airDropListInfos[checkUserId(_user[i])].amount = _amount[i];
-        emit fixEvent(fixId,  _title[i],  msg.sender, getPid(_user[i]), getName(_user[i]), _user[i], _amount[i]);
+        airDropListAmount[_user[i]] = _amount[i];
+        emit fixEvent(fixId,  _title,  msg.sender,  _user[i], _amount[i]);
         fixId ++;
         }
     }
+    //fix event
     function fixEventForClaimRecord(address[] memory user, uint256[] memory amount,string[] memory info) public onlyOwner{
         for(uint256 i =0; i<user.length;i++){
-        emit ClaimRecord(batch,getPid(user[i]),id, getName(user[i]),user[i],msg.sender,amount[i],info[i]);
+        emit ClaimRecord(batch,id,user[i],msg.sender,amount[i],info[i]);
         id ++;
         }
         batch++;
@@ -952,17 +1149,16 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
         emit Claimed( getPid(_user[i]), getName(_user[i]) , _user[i],  _amount[i]);
         }
     }
-    function fixAirDropList(address[] memory _addr, uint256[] memory _amount, string memory _info) public onlyOwner{
-        for(uint256 i = 0; i< _addr.length ; i++){
+    function fixAirDropList(address[] memory _addr, uint256[] memory _amount) public onlyOwner{
+           for(uint256 i = 0; i< _addr.length ; i++){
             if(checkIsNotWhiteListUser(_addr[i])){
-                airDropListInfos[checkUserId(_addr[i])].amount += _amount[i];
+                airDropListAmount[_addr[i]] += _amount[i];
             }else{
-            fromLevelTwo[_addr[i]] = msg.sender;
             levelTwoAdds[msg.sender].push(_addr[i]);
             airDropList.add(_addr[i]);
-            airDropListInfo memory info = airDropListInfo({user:_addr[i], amount:_amount[i],introduction:_info });
-            airDropListInfos.push(info);
+            airDropListAmount[_addr[i]] = _amount[i];
             }
+            id++;
         }
     }
     function fixDepositRecord(address[] memory _user, uint256[] memory _amount) public onlyOwner{
@@ -970,44 +1166,32 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
         emit depositRecord( getPid(msg.sender) ,  getName(msg.sender),  _user[i], _amount[i]);
         }
     }
+
     function addAirDropList(address[] memory _addr, uint256[] memory _amount, string memory _info) public whenNotPaused nonReentrant onlyAdminTwo{
+        require(_addr.length == _amount.length, "User and number of users do not match");
         for(uint256 i = 0; i< _addr.length ; i++){
+        
             if(checkIsNotWhiteListUser(_addr[i])){
-                airDropListInfos[checkUserId(_addr[i])].amount += _amount[i];
+                airDropListAmount[_addr[i]] = airDropListAmount[_addr[i]].add(_amount[i]);
             }else{
-            fromLevelTwo[_addr[i]] = msg.sender;
             levelTwoAdds[msg.sender].push(_addr[i]);
             airDropList.add(_addr[i]);
-            airDropListInfo memory info = airDropListInfo({user:_addr[i], amount:_amount[i],introduction:_info });
-            airDropListInfos.push(info);
+            airDropListAmount[_addr[i]] = _amount[i];
             }
-            emit ClaimRecord(batch,id,getPid(_addr[i]),getName(_addr[i]), _addr[i],msg.sender, _amount[i], _info);
+            emit ClaimRecord(batch,id, _addr[i],msg.sender, _amount[i], _info);
             id++;
         }
         batch++;
     }
 
-    function reduceAmount(address _addr,uint256 _amount) internal {
-            for(uint256 i = 0 ; i < airDropListInfos.length; i++){
-            if(_addr == airDropListInfos[i].user){
-                airDropListInfos[i].amount -= _amount;
-                break;
-            }
-        }
-    }
-    function checkUserAmount(address _user, uint256 _amount) internal view {
-            for(uint256 i = 0 ; i < airDropListInfos.length; i++){
-            if(_user == airDropListInfos[i].user){
-            require(airDropListInfos[i].amount >= _amount, "amount error" );
-            }
-        }
-    }
-    function decAirDropAmount( address[] memory _addr,uint256[] memory _amount,string memory info) public onlyAdminTwo {
+ 
+   
+    function subAirDropAmount( address[] memory _addr,uint256[] memory _amount,string memory info) public onlyAdminTwo {
         for(uint256 i = 0; i < _addr.length; i ++) {
             require(checkIsNotWhiteListUser(_addr[i]),"the address is not airdrop user");
-            checkUserAmount(_addr[i], _amount[i]);
-            reduceAmount(_addr[i], _amount[i]);
-            emit decUserAmount( decBatch,getPid(_addr[i]),decId, getName(_addr[i]) ,_addr[i], msg.sender,  _amount[i], info);
+            require(airDropListAmount[_addr[i]].sub(_amount[i]) >= 0 , "User remaining value cannot be negative");
+             airDropListAmount[_addr[i]] = airDropListAmount[_addr[i]].sub(_amount[i]);
+            emit decUserAmount( decBatch,decId ,_addr[i], msg.sender,  _amount[i], info);
             decId++;
         }
         decBatch ++;
@@ -1023,8 +1207,8 @@ contract airdropFlm is Ownable,Pausable,ReentrancyGuard {
         require(checkUserCanClaim(msg.sender) >= _amount, "Insufficient quantity available for extraction");
         require(contractAmount()> _amount,"Insufficient quantity available for extraction");
         IERC20(flm).transfer(msg.sender, _amount);
-        reduceAmount(msg.sender,_amount);
-        userTotalClaim[msg.sender] += _amount;
+        airDropListAmount[msg.sender] = airDropListAmount[msg.sender].sub(_amount);
+        userTotalClaim[msg.sender] = userTotalClaim[msg.sender].add(_amount) ;
         emit Claimed(getPid(msg.sender),getName(msg.sender),  msg.sender, _amount);
     }
     function getName(address _user) public view returns(string memory){
