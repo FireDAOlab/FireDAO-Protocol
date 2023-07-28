@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 
 /**
  * @title ERC721 token receiver interface
@@ -781,234 +780,6 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
     }
 }
 
-/**
- * @dev ERC721 token with storage based token URI management.
- */
-abstract contract ERC721URIStorage is ERC721 {
-    using Strings for uint256;
-
-    // Optional mapping for token URIs
-    mapping(uint256 => string) private _tokenURIs;
-
-    /**
-     * @dev See {IERC721Metadata-tokenURI}.
-     */
-    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        _requireMinted(tokenId);
-
-        string memory _tokenURI = _tokenURIs[tokenId];
-        string memory base = _baseURI();
-
-        // If there is no base URI, return the token URI.
-        if (bytes(base).length == 0) {
-            return _tokenURI;
-        }
-        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
-        if (bytes(_tokenURI).length > 0) {
-            return string(abi.encodePacked(base, _tokenURI));
-        }
-
-        return super.tokenURI(tokenId);
-    }
-
-    /**
-     * @dev Sets `_tokenURI` as the tokenURI of `tokenId`.
-     *
-     * Requirements:
-     *
-     * - `tokenId` must exist.
-     */
-    function _setTokenURI(uint256 tokenId, string memory _tokenURI) internal virtual {
-        require(_exists(tokenId), "ERC721URIStorage: URI set of nonexistent token");
-        _tokenURIs[tokenId] = _tokenURI;
-    }
-
-    /**
-     * @dev See {ERC721-_burn}. This override additionally checks to see if a
-     * token-specific URI was set for the token, and if so, it deletes the token URI from
-     * the storage mapping.
-     */
-    function _burn(uint256 tokenId) internal virtual override {
-        super._burn(tokenId);
-
-        if (bytes(_tokenURIs[tokenId]).length != 0) {
-            delete _tokenURIs[tokenId];
-        }
-    }
-}
-
-
-contract FirePassport is IFirePassport,ERC721URIStorage {
-   mapping(address => User) public userInfo;
-   mapping(string => bool) public override usernameExists;
-   string public baseURI;
-   string public baseExtension = ".json";
-   User[] public users;
-   address public owner;
-   event Register(uint  pid,string  username, address  account,string email,uint joinTime,string information);
-   bool public feeOn;
-   uint public fee;
-   uint public minUsernameLength = 4;
-   uint public maxUsernameLength = 30;
-   address public firekun = 0x9EABe6013C52e23c4564900465e87093a36A1d4b;
-   address public weth;
-   address public feeReceiver;
-   address public treasuryDistributionContract;
-   bool public useTreasuryDistributionContract;
-   bool public pause;
-   constructor(address  _feeReceiver,address _weth,string memory baseURI_) ERC721("Fire Passport", "FIREPP") {
-      owner = msg.sender;
-      feeReceiver = _feeReceiver;
-      weth = _weth;
-      User memory user = User({PID:1,account:firekun,username:"FireKun",information:"",joinTime:block.timestamp});
-      users.push(user);
-      userInfo[firekun] = user;
-      usernameExists["firekun"] = true;
-      baseURI = baseURI_;
-      _mint(firekun, 1);
-   }
- 
-   modifier checkUsername(string memory username) {
-      bytes memory bStr = bytes(username);
-      require(bStr.length >=minUsernameLength && bStr.length < maxUsernameLength ,"Username length exceeds limit");
-      require(((uint8(bStr[0]) >= 97) && (uint8(bStr[0]) <= 122)) || ((uint8(bStr[0]) >= 65) && (uint8(bStr[0]) <= 90)),"Username begins with a letter"); 
-         for (uint i = 0; i < bStr.length; i++) {
-            require(((uint8(bStr[i]) >= 65) && (uint8(bStr[i]) <= 90)) || ((uint8(bStr[i]) >= 48) && (uint8(bStr[i]) <= 57)) || ((uint8(bStr[i]) >= 97) && (uint8(bStr[i]) <= 122)) ||(uint8(bStr[i]) == 95),"The username contains illegal characters");
-         }
-    
-      _;
-   }
-   modifier isOwner() {
-      require(msg.sender == owner,"access denied");
-      _;
-   }
-   modifier allowRegister() {
-      require(pause == false,"Registration has been suspended");
-      _;
-   }
-   function register(string memory username,string memory email,string memory information) payable external allowRegister checkUsername(username) {
-      string memory trueUsername = username;
-      username = _toLower(username);
-      require(usernameExists[username] == false,"This username has already been taken");
-      require(userInfo[msg.sender].joinTime == 0,"This username has already been taken");
-      if(feeOn){
-          if(msg.value == 0) {
-              TransferHelper.safeTransferFrom(weth,msg.sender,feeReceiver,fee);
-          } else {
-              require(msg.value == fee,"provide the error number on ETH");
-              IWETH(weth).deposit{value: fee}();
-              IWETH(weth).transfer(feeReceiver,fee);
-          }
-      }
-      uint id = users.length + 1;
-      User memory user = User({PID:id,account:msg.sender,username:username,information:information,joinTime:block.timestamp});
-      users.push(user);
-      userInfo[msg.sender] = user;
-      usernameExists[username] = true;
-      _mint(msg.sender, id);
-      if(useTreasuryDistributionContract) {
-         ITreasuryDistributionContract(treasuryDistributionContract).setSourceOfIncome(4,msg.sender,fee);
-      }
-      emit Register(id,trueUsername,msg.sender,email,block.timestamp,information);
-   }
-   function setBaseURI(string memory baseURI_) isOwner external {
-      baseURI = baseURI_;
-   }
-   function _baseURI() internal view virtual override returns (string memory) {
-      return baseURI;
-   }
-   function tokenURI(uint256 tokenId)
-    public
-    view
-    virtual
-    override
-    returns (string memory)
-  {
-    require(
-      _exists(tokenId),
-      "ERC721Metadata: URI query for nonexistent token"
-    );
-
-    string memory currentBaseURI = _baseURI();
-    return bytes(currentBaseURI).length > 0
-        ? string(abi.encodePacked(currentBaseURI, Strings.toString(tokenId), baseExtension))
-        : "";
-  }
-   function changeUserInfo(string memory information) external {
-      require(userInfo[msg.sender].PID != 0,'This user does not exist');
-      User storage user = userInfo[msg.sender];
-      user.information = information;
-      users[user.PID - 1].information = information;
-   }
-   function getUserCount() external view override returns(uint) {
-      return users.length;
-   }
-    function hasPID(address user) external override view returns(bool){
-        return userInfo[user].PID !=0;
-    }
-    function getUserInfo(address user) external override view returns(User memory){
-        return userInfo[user];
-    }
-   function setFee(uint fees) isOwner public {
-      require(fees <= 100000000000000000,'The maximum fee is 0.1ETH');
-      fee = fees;
-   }
-   function pauseRegister(bool set) isOwner external {
-      pause = set;
-   }
-   function _toLower(string memory str) internal pure returns (string memory) {
-        bytes memory bStr = bytes(str);
-        bytes memory bLower = new bytes(bStr.length);
-        for (uint i = 0; i < bStr.length; i++) {
-            if ((uint8(bStr[i]) >= 65) && (uint8(bStr[i]) <= 90)) {
-                bLower[i] = bytes1(uint8(bStr[i]) + 32);
-            } else {
-                bLower[i] = bStr[i];
-            }
-        }
-        return string(bLower);
-    }
-
-   function setFeeOn(bool set) isOwner public {
-     feeOn = set;
-   }
-
-   function setTreasuryDistributionContractOn(bool set) isOwner external {
-      useTreasuryDistributionContract = set;
-   }
-
-   function setUsernameLimitLength(uint min,uint max)  isOwner public {
-      minUsernameLength = min;
-      maxUsernameLength = max;
-   }
-
-   function changeFeeReceiver(address  receiver) isOwner external {
-      feeReceiver = receiver;
-   }
-
-   function setTreasuryDistributionContract(address _treasuryDistributionContract) isOwner external {
-      require(_treasuryDistributionContract != address(0),"contract is the zero address");
-      treasuryDistributionContract = _treasuryDistributionContract;
-   }
-
-   function changeOwner(address account) isOwner public {
-      require(account != address(0),"account is the zero address");
-      owner = account;
-   }
-
-   function _transfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal virtual override  {
-       from;
-       to;
-       tokenId;
-       revert("ERC721:transfer declined");
-    }
-     receive() external payable {}
-}
-
 // File: contracts/lib/TransferHelper.sol
 
 pragma solidity >=0.6.0;
@@ -1075,14 +846,7 @@ interface IFireSoul {
     function checkFIDA(address _user) external view returns(uint256);
 
 }
-// File: contracts/interface/ITreasuryDistributionContract.sol
 
-pragma solidity ^0.8.0;
-
-interface ITreasuryDistributionContract {
-  function AllocationFund() external;
-  function setSourceOfIncome(uint num,address user, uint256 amount) external ;
-}
 // File: operator-filter-registry/src/lib/Constants.sol
 
 
@@ -2970,6 +2734,616 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
     }
 }
 
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Contracts (last updated v4.6.0) (utils/math/SafeMath.sol)
+
+pragma solidity ^0.8.0;
+
+// CAUTION
+// This version of SafeMath should only be used with Solidity 0.8 or later,
+// because it relies on the compiler's built in overflow checks.
+
+/**
+ * @dev Wrappers over Solidity's arithmetic operations.
+ *
+ * NOTE: `SafeMath` is generally not needed starting with Solidity 0.8, since the compiler
+ * now has built in overflow checking.
+ */
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, with an overflow flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            uint256 c = a + b;
+            if (c < a) return (false, 0);
+            return (true, c);
+        }
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, with an overflow flag.
+     *
+     * _Available since v3.4._
+     */
+    function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b > a) return (false, 0);
+            return (true, a - b);
+        }
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+            // benefit is lost if 'b' is also tested.
+            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+            if (a == 0) return (true, 0);
+            uint256 c = a * b;
+            if (c / a != b) return (false, 0);
+            return (true, c);
+        }
+    }
+
+    /**
+     * @dev Returns the division of two unsigned integers, with a division by zero flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b == 0) return (false, 0);
+            return (true, a / b);
+        }
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b == 0) return (false, 0);
+            return (true, a % b);
+        }
+    }
+
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     *
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a + b;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a - b;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     *
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a * b;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers, reverting on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator.
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a / b;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * reverting when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a % b;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
+     * overflow (when the result is negative).
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {trySub}.
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        unchecked {
+            require(b <= a, errorMessage);
+            return a - b;
+        }
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers, reverting with custom message on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        unchecked {
+            require(b > 0, errorMessage);
+            return a / b;
+        }
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * reverting with custom message when dividing by zero.
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {tryMod}.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        unchecked {
+            require(b > 0, errorMessage);
+            return a % b;
+        }
+    }
+}
+
+
+// File: @openzeppelin/contracts/utils/structs/EnumerableSet.sol
+
+
+// OpenZeppelin Contracts (last updated v4.8.0) (utils/structs/EnumerableSet.sol)
+// This file was procedurally generated from scripts/generate/templates/EnumerableSet.js.
+
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Library for managing
+ * https://en.wikipedia.org/wiki/Set_(abstract_data_type)[sets] of primitive
+ * types.
+ *
+ * Sets have the following properties:
+ *
+ * - Elements are added, removed, and checked for existence in constant time
+ * (O(1)).
+ * - Elements are enumerated in O(n). No guarantees are made on the ordering.
+ *
+ * ```
+ * contract Example {
+ *     // Add the library methods
+ *     using EnumerableSet for EnumerableSet.AddressSet;
+ *
+ *     // Declare a set state variable
+ *     EnumerableSet.AddressSet private mySet;
+ * }
+ * ```
+ *
+ * As of v3.3.0, sets of type `bytes32` (`Bytes32Set`), `address` (`AddressSet`)
+ * and `uint256` (`UintSet`) are supported.
+ *
+ * [WARNING]
+ * ====
+ * Trying to delete such a structure from storage will likely result in data corruption, rendering the structure
+ * unusable.
+ * See https://github.com/ethereum/solidity/pull/11843[ethereum/solidity#11843] for more info.
+ *
+ * In order to clean an EnumerableSet, you can either remove all elements one by one or create a fresh instance using an
+ * array of EnumerableSet.
+ * ====
+ */
+library EnumerableSet {
+    // To implement this library for multiple types with as little code
+    // repetition as possible, we write it in terms of a generic Set type with
+    // bytes32 values.
+    // The Set implementation uses private functions, and user-facing
+    // implementations (such as AddressSet) are just wrappers around the
+    // underlying Set.
+    // This means that we can only create new EnumerableSets for types that fit
+    // in bytes32.
+
+    struct Set {
+        // Storage of set values
+        bytes32[] _values;
+        // Position of the value in the `values` array, plus 1 because index 0
+        // means a value is not in the set.
+        mapping(bytes32 => uint256) _indexes;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function _add(Set storage set, bytes32 value) private returns (bool) {
+        if (!_contains(set, value)) {
+            set._values.push(value);
+            // The value is stored at length-1, but we add 1 to all indexes
+            // and use 0 as a sentinel value
+            set._indexes[value] = set._values.length;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function _remove(Set storage set, bytes32 value) private returns (bool) {
+        // We read and store the value's index to prevent multiple reads from the same storage slot
+        uint256 valueIndex = set._indexes[value];
+
+        if (valueIndex != 0) {
+            // Equivalent to contains(set, value)
+            // To delete an element from the _values array in O(1), we swap the element to delete with the last one in
+            // the array, and then remove the last element (sometimes called as 'swap and pop').
+            // This modifies the order of the array, as noted in {at}.
+
+            uint256 toDeleteIndex = valueIndex - 1;
+            uint256 lastIndex = set._values.length - 1;
+
+            if (lastIndex != toDeleteIndex) {
+                bytes32 lastValue = set._values[lastIndex];
+
+                // Move the last value to the index where the value to delete is
+                set._values[toDeleteIndex] = lastValue;
+                // Update the index for the moved value
+                set._indexes[lastValue] = valueIndex; // Replace lastValue's index to valueIndex
+            }
+
+            // Delete the slot where the moved value was stored
+            set._values.pop();
+
+            // Delete the index for the deleted slot
+            delete set._indexes[value];
+
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function _contains(Set storage set, bytes32 value) private view returns (bool) {
+        return set._indexes[value] != 0;
+    }
+
+    /**
+     * @dev Returns the number of values on the set. O(1).
+     */
+    function _length(Set storage set) private view returns (uint256) {
+        return set._values.length;
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function _at(Set storage set, uint256 index) private view returns (bytes32) {
+        return set._values[index];
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function _values(Set storage set) private view returns (bytes32[] memory) {
+        return set._values;
+    }
+
+    // Bytes32Set
+
+    struct Bytes32Set {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _add(set._inner, value);
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _remove(set._inner, value);
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(Bytes32Set storage set, bytes32 value) internal view returns (bool) {
+        return _contains(set._inner, value);
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(Bytes32Set storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
+        return _at(set._inner, index);
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function values(Bytes32Set storage set) internal view returns (bytes32[] memory) {
+        bytes32[] memory store = _values(set._inner);
+        bytes32[] memory result;
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := store
+        }
+
+        return result;
+    }
+
+    // AddressSet
+
+    struct AddressSet {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(AddressSet storage set, address value) internal returns (bool) {
+        return _add(set._inner, bytes32(uint256(uint160(value))));
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(AddressSet storage set, address value) internal returns (bool) {
+        return _remove(set._inner, bytes32(uint256(uint160(value))));
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(AddressSet storage set, address value) internal view returns (bool) {
+        return _contains(set._inner, bytes32(uint256(uint160(value))));
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(AddressSet storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(AddressSet storage set, uint256 index) internal view returns (address) {
+        return address(uint160(uint256(_at(set._inner, index))));
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function values(AddressSet storage set) internal view returns (address[] memory) {
+        bytes32[] memory store = _values(set._inner);
+        address[] memory result;
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := store
+        }
+
+        return result;
+    }
+
+    // UintSet
+
+    struct UintSet {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(UintSet storage set, uint256 value) internal returns (bool) {
+        return _add(set._inner, bytes32(value));
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(UintSet storage set, uint256 value) internal returns (bool) {
+        return _remove(set._inner, bytes32(value));
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(UintSet storage set, uint256 value) internal view returns (bool) {
+        return _contains(set._inner, bytes32(value));
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(UintSet storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(UintSet storage set, uint256 index) internal view returns (uint256) {
+        return uint256(_at(set._inner, index));
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function values(UintSet storage set) internal view returns (uint256[] memory) {
+        bytes32[] memory store = _values(set._inner);
+        uint256[] memory result;
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := store
+        }
+
+        return result;
+    }
+}
+
 // File: contracts/FireSeed_main.sol
 
 
@@ -2977,97 +3351,102 @@ pragma solidity ^0.8.0;
 
 
 contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
-    FirePassport fp;
+    using SafeMath for uint256;
     using Counters for Counters.Counter;
+    using EnumerableSet for EnumerableSet.AddressSet;
+    Counters.Counter private _idTracker;
+    EnumerableSet.AddressSet private whiteList;
+    
     string public constant name = "FireSeed";
     string public constant symbol = "FIRESEED";
+    
+    address firePassport;
+    bool private locked;
     uint256 public TOP_FEE_RATIO;
     uint256 public MIDDLE_FEE_RATIO;
     uint256 public DOWN_FEE_RATIO;
-    uint256 public TOTAL_REWARD_RATIO_ONE;
-    uint256 public TOTAL_REWARD_RATIO_TWO;
+    uint256 public TOTAL_INVITE_REWARD_RATIO;
+    uint256 public TOTAL_CITYNODE_REWARD_RATIO;
     uint256 public TOTAL_MAIN_RATIO;
     uint256 public CITY_NODE_RATE;
-    uint256 private FEE_RATIO = 100;
-    Counters.Counter private _idTracker;
-    event passFireSeed(address  from, address  to, uint256  tokenId, uint256  amount, uint256  transferTime);
-    event transferList(uint256 transferTime, address to, uint256 pid, uint256 fid, uint256 amount);
+    uint256 private FEE_RATIO;
     string public baseURI;
-    bool private locked;
-    bool public useITreasuryDistributionContract;
-    struct ratioDetail {
-        uint256 lower;
-        uint256 upper;
-        uint256 rate;
-    }
     address private guarding;
-    uint256 public maxMint = 1e6;
+    uint256 public maxMintId;
     uint256 public fee;
-    uint256 public amountOfSbt007;
-    uint256 public wListMintMax;
-    uint256 public userMintMax;
+    uint256 public whiteListPerMintMax;
+    uint256 public userPerMintMax;
     uint256 public lowestMint;
     uint256 public whitelistDiscount;
     uint256 public fireSeedDiscount;
-    address public treasuryDistributionContract;
     address public rainbowTreasury;
     address public weth;
     address public fireSoul;
     address public cityNode;
-    address[] public whiteList;
-    ratioDetail[] public ratioDetails;
     mapping(address => bool) public isRecommender;
     mapping(address => address) public recommender;
     mapping(address => address[]) public recommenderInfo;
-    mapping(address => bool) public isNotWhiteListUser;
     mapping(address => uint256[]) public ownerOfId; 
     mapping(uint256 => uint256) public discountFactors;
-    constructor(address _treasuryDistributionContract,address _cityNode,address _rainbowTreasury, address _weth) ERC1155("https://bafybeic4doyj66yilxuaesoedeafb6uzzjabrjdff3z43zfmynivturhrq.ipfs.nftstorage.link/0.json") {
+    event passFireSeed(address  from, address  to, uint256  tokenId, uint256  amount, uint256  transferTime);
+    event transferList(address to, uint256 pid, uint256 fid, uint256 amount);
+    
+    constructor(address _firePassport,address _cityNode,address _rainbowTreasury, address _weth) ERC1155("https://bafybeic4doyj66yilxuaesoedeafb6uzzjabrjdff3z43zfmynivturhrq.ipfs.nftstorage.link/0.json") {
     _idTracker.increment();
     weth = _weth;
     baseURI = "https://bafybeic4doyj66yilxuaesoedeafb6uzzjabrjdff3z43zfmynivturhrq.ipfs.nftstorage.link/";
-    wListMintMax = 1000;
-    userMintMax = 100;
+    whiteListPerMintMax = 1000;
+    userPerMintMax = 100;
     whitelistDiscount = 0;
     lowestMint = 1;
-    fee = 80000000000000000; //80000000000000000
+    fee = 80000000000000000; 
     setDiscountFactor(1,10,100);
     setDiscountFactor(11, 20, 90);
     setDiscountFactor(21, 30, 80);
     setDiscountFactor(31, 40, 70);
     setDiscountFactor(41, 50, 60);
     setDiscountFactor(51, 100, 50);
+    setMaxMintId(1000000);
     TOP_FEE_RATIO = 70;
     MIDDLE_FEE_RATIO = 20;
     DOWN_FEE_RATIO = 10;
     TOTAL_MAIN_RATIO = 70;
-    TOTAL_REWARD_RATIO_ONE = 20;
-    TOTAL_REWARD_RATIO_TWO = 10;
+    TOTAL_INVITE_REWARD_RATIO = 20;
+    TOTAL_CITYNODE_REWARD_RATIO = 10;
     fireSeedDiscount = 100;
-    treasuryDistributionContract=_treasuryDistributionContract;
     cityNode = _cityNode;
     rainbowTreasury = _rainbowTreasury;
     CITY_NODE_RATE = 90;
+    FEE_RATIO = 100;
+    firePassport =_firePassport;
 
 }   
+    receive() external payable {}
+
   modifier nonReentrant() {
         require(!locked, "FireLock: ReentrancyGuard: reentrant call");
         locked = true;
         _;
         locked = false;
     }
-    function setFpAddr(address payable _address) public onlyOwner{
-        fp = FirePassport(_address);
+    function setMaxMintId(uint256 _amount) public onlyOwner {
+        maxMintId = _amount;
     }
-    function checkPid(address _user) public view returns(uint256){
-         (
-             uint256 PID,
-             ,
-             ,
-             ,
-
-         ) = fp.userInfo(_user);
-		return uint256(PID);
+    function setFirePassport(address _firePassport) public onlyOwner {
+        firePassport = _firePassport;
+    }
+ 
+    function getPid(address _user) public view returns(uint) {
+        if(IFirePassport(firePassport).hasPID(_user)){
+        return IFirePassport(firePassport).getUserInfo(_user).PID;
+        }
+        return 0;
+    }
+    function getFid(address _user) public view returns(uint256) {
+        if(IFireSoul(fireSoul).checkFID(_user)){
+        return IFireSoul(fireSoul).checkFIDA(_user);
+        } 
+        return 0;
     }
     function setWhitelistDiscount(uint256 _whitelistDiscount) public onlyOwner{
         whitelistDiscount = _whitelistDiscount;
@@ -3075,65 +3454,49 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
     function setGuarding(address _guarding) public onlyOwner{
         guarding = _guarding;
     }
-    function setInviteFeeRatio(uint256 _top, uint256 _middle, uint256 _down) public onlyOwner{
+    function setInviteRewardRatio(uint256 _top, uint256 _middle, uint256 _down) public onlyOwner{
         require(_top + _middle + _down == 100, "FireSeed: invalid setting");
         TOP_FEE_RATIO = _top;
         MIDDLE_FEE_RATIO = _middle;
         DOWN_FEE_RATIO = _down;
     }
-    function setTotalRewardRatioOne(uint256 _one,uint256 _two, uint256 _rainbowTreasury) public onlyOwner {
-        require(_one + _two + _rainbowTreasury == 100 ,"FireSeed: invalid setting");
-        TOTAL_REWARD_RATIO_ONE = _one;
-        TOTAL_REWARD_RATIO_TWO = _two;
-        TOTAL_MAIN_RATIO = _rainbowTreasury;
+    function setRewardRatio(uint256 _inviteRatio,uint256 _cityNodeRatio, uint256 _rainbowTreasuryRatio) public onlyOwner {
+        require(_inviteRatio + _cityNodeRatio + _rainbowTreasuryRatio == 100 ,"FireSeed: invalid setting");
+        TOTAL_INVITE_REWARD_RATIO = _inviteRatio;
+        TOTAL_CITYNODE_REWARD_RATIO = _cityNodeRatio;
+        TOTAL_MAIN_RATIO = _rainbowTreasuryRatio;
     }
     function setCityNodeAddress(address _cityNode) public onlyOwner{
         cityNode = _cityNode;
     }
     function setFireSeedDiscount(uint256 _fireSeedDiscount) public onlyOwner{
-        require(_fireSeedDiscount != 0, "FireSeed: invalid address");
         fireSeedDiscount = _fireSeedDiscount;
     }
     function setFireSoul(address _fireSoul) public onlyOwner{
         fireSoul = _fireSoul;
     }
     function setRainbowTreasury(address _rainbowTreasury) public onlyOwner{
-        require(_rainbowTreasury != address(0) ,"FireSeed: Invalid address" );
         rainbowTreasury = _rainbowTreasury;
     }
     function setDiscountFactor(uint256 _lowerBound, uint256 _upperBound, uint256 _discountFactor) public onlyOwner {
-        require(_lowerBound < _upperBound, "FireSeed: Invalid range");
-        require(discountFactors[_upperBound] == 0 ,"FireSeed: Invalid setting");
-        require(discountFactors[_lowerBound] == 0 ,"FireSeed: Invalid setting");
-
+        require(discountFactors[_upperBound] == 0 && discountFactors[_lowerBound] == 0 && _lowerBound < _upperBound,"FireSeed: Invalid setting");
         discountFactors[_lowerBound] = _discountFactor;
         discountFactors[_upperBound] = _discountFactor;
-        ratioDetail memory _ratioDetail = ratioDetail({
-            lower:_lowerBound,
-            upper:_upperBound,
-            rate:_discountFactor
-        });
-        ratioDetails.push(_ratioDetail);
-
     }
     function deleteDiscountFactor(uint256 _lowerBound,uint256 _upperBound) public onlyOwner {
+        require(discountFactors[_lowerBound] > 0 && discountFactors[_upperBound] > 0, "input error");
         delete discountFactors[_lowerBound];
         delete discountFactors[_upperBound];
-        for(uint256 i = 0 ; i< ratioDetails.length ;i ++){
-            if(_lowerBound == ratioDetails[i].lower && _upperBound == ratioDetails[i].upper){
-                ratioDetails[i] = ratioDetails[ratioDetails.length - 1];
-                ratioDetails.pop();
-            }
-        }
+ 
     }
     function setLowestMint(uint256 _amount) public onlyOwner{
         lowestMint = _amount;
     }
-    function setUserMintMax(uint256 _amount) public onlyOwner{
-        userMintMax = _amount;
+    function setUserPerMintMax(uint256 _amount) public onlyOwner{
+        userPerMintMax = _amount;
     }
-    function setWListMax(uint256 _amount) public onlyOwner{
-        wListMintMax = _amount;
+    function setWListPerMintMax(uint256 _amount) public onlyOwner{
+        whiteListPerMintMax = _amount;
     }
     function cancelAddressInvitation(address _addr) public onlyOwner{
         isRecommender[_addr] = true;
@@ -3143,158 +3506,97 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
    }
     function addWhiteListUser(address[] memory _users) public onlyOwner{
         for(uint256 i = 0; i < _users.length ; i++ ){
-            if(!isNotWhiteListUser[_users[i]]){
-            isNotWhiteListUser[_users[i]] = true;
-            whiteList.push(_users[i]);
-            }else{
-                require(false,"FireSeed: Please make sure there is no duplicate address");
-            }
+          require(!checkIsNotWhiteListUser(_users[i]), "There is already a whitelist account in the user, please check and try again");
+            whiteList.add(_users[i]);
         }
     }
-    function removeFromWhiteList(address[] calldata users) external onlyOwner {
-        for (uint256 i = 0; i < users.length; i++) {
-            require(isNotWhiteListUser[users[i]] == true, "FireSeed: User not in whitelist");
-            uint256 indexToRemove = findIndexOf(whiteList, users[i]);
-            require(indexToRemove < whiteList.length, "FireSeed: User not in whitelist array");
-            removeAtIndex(whiteList, indexToRemove);
-            isNotWhiteListUser[users[i]] = false;
+    function removeFromWhiteList(address[] calldata _users) external onlyOwner {
+        for (uint256 i = 0; i < _users.length; i++) {
+            require(checkIsNotWhiteListUser(_users[i]), "FireSeed: User not in whitelist");
+            whiteList.remove(_users[i]);
         }
     }
-    function findIndexOf(address[] memory array, address item) private pure returns (uint256) {
-        for (uint256 i = 0; i < array.length; i++) {
-            if (array[i] == item) {
-                return i;
-            }
-        }
-        return array.length;
-    }
-    function removeAtIndex(address[] storage array, uint256 index) private {
-        require(index < array.length, "Index out of bounds");
-        for (uint256 i = index; i < array.length - 1; i++) {
-            array[i] = array[i+1];
-        }
-        array.pop();
-    }
-    function setUseTreasuryDistributionContract(bool _set) public onlyOwner{
-        useITreasuryDistributionContract = _set;
-    }
-    function setTreasuryDistributionContract(address _treasuryDistributionContract) public onlyOwner{
-        treasuryDistributionContract=_treasuryDistributionContract;
-    }
+  
     function setCityNodeRate(uint256 _rate) public onlyOwner {
         require(_rate <= 100 ,"_rate error");
         CITY_NODE_RATE = _rate;
     }
-    
-    function mintWithETH(uint256 _amount) external payable whenNotPaused {
-    require(_idTracker.current() < maxMint, "FireSeed: To reach the maximum number of casting ids");
+    function calculateFee(uint256 _amount) internal view returns (uint256) {
+        uint256 calculatedFee = _amount.mul(fee).mul(fireSeedDiscount).div(100);
+        uint256 discountFactor = 100;
+
+        for (uint256 i = 0; i < _amount; i++) {
+            if (discountFactors[i] > 0) {
+                discountFactor = discountFactors[i];
+            }
+        }
+
+        calculatedFee = calculatedFee.mul(discountFactor).div(100);
+
+    return calculatedFee;
+} 
+ 
+        
+    function mintWithETH(uint256 _amount) external payable whenNotPaused nonReentrant {
+    require(_idTracker.current() < maxMintId, "FireSeed: To reach the maximum number of casting ids");
     require(_amount >= lowestMint, "FireSeed: Below Minting Minimum");
+    ownerOfId[msg.sender].push(_idTracker.current());
+    //whiteList
+    if (checkIsNotWhiteListUser(msg.sender) && _amount <= whiteListPerMintMax) {
+        uint256 _whitelistFee = _amount.mul(fee).mul(whitelistDiscount).div(100);
+        if(_whitelistFee == 0){
+            _mint(msg.sender, _idTracker.current(), _amount, '');
+            _idTracker.increment();
+            return;
+        }else{
+        require(msg.value == _whitelistFee, 'Please send the correct number of ETH');
+            TransferHelper.safeTransferFrom(weth, msg.sender, rainbowTreasury, _whitelistFee);
+            _mint(msg.sender, _idTracker.current(), _amount, '');
+            _idTracker.increment();
+            return;
+        }
+    }
+    //user
+    require(_amount <= userPerMintMax, "FireSeed: You have exceeded the maximum purchase limit");
+    address _CityNodeTreasury = ICityNode(cityNode).cityNodeTreasuryAddr(msg.sender);
     address _top = recommender[msg.sender];
     address _middle = recommender[_top];
     address _down = recommender[_middle];
-    ownerOfId[msg.sender].push(_idTracker.current());
-    if (isNotWhiteListUser[msg.sender] && _amount <= wListMintMax) {
-        uint256 _wlistFee = _amount * fee * whitelistDiscount / 100;
-        if(_wlistFee == 0){
-        _mint(msg.sender, _idTracker.current(), _amount, '');
-    _idTracker.increment();
-        return;
-        }else{
-        require(msg.value == _wlistFee, 'Please send the correct number of ETH');
-        TransferHelper.safeTransferFrom(weth, msg.sender, rainbowTreasury, _wlistFee);
-        _mint(msg.sender, _idTracker.current(), _amount, '');
-    _idTracker.increment();
-        return;
-        }
-    }
-    require(_amount <= userMintMax, "FireSeed: You have exceeded the maximum purchase limit");
     uint256 _fee = calculateFee(_amount);
-    uint256 _mainFee = _fee *  TOTAL_MAIN_RATIO / FEE_RATIO;
-    uint256 _referralRewards = _fee * TOTAL_REWARD_RATIO_ONE / FEE_RATIO;
-    uint256 _cityNodeReferralRewards = _fee * TOTAL_REWARD_RATIO_TWO / FEE_RATIO;
+    uint256 _mainFee = _fee.mul(TOTAL_MAIN_RATIO).div(FEE_RATIO);
+    uint256 _inviteRewards = _fee.mul(TOTAL_INVITE_REWARD_RATIO).div(FEE_RATIO);
+    uint256 _cityNodeReferralRewards = _fee.mul(TOTAL_CITYNODE_REWARD_RATIO).div(FEE_RATIO);
+    uint256 topRewards = _inviteRewards.mul(TOP_FEE_RATIO).div(FEE_RATIO);
+    uint256 middleRewards = _inviteRewards.mul(MIDDLE_FEE_RATIO).div(FEE_RATIO);
+    uint256 downRewards = _inviteRewards.mul(DOWN_FEE_RATIO).div(FEE_RATIO);
 
-        require(msg.value == _fee, 'Please send the correct number of ETH');
+    require(msg.value == _fee, 'Please send the correct number of ETH');
         IWETH(weth).deposit{value: _fee}();
         IWETH(weth).transfer(rainbowTreasury, _mainFee);
-        ITreasuryDistributionContract(treasuryDistributionContract).setSourceOfIncome(4, msg.sender, _mainFee);
-
         if(ICityNode(cityNode).isNotCityNodeUsers(msg.sender) && ICityNode(cityNode).isNotCityNodeLight(msg.sender)){
-        IWETH(weth).transfer(ICityNode(cityNode).cityNodeTreasuryAddr(msg.sender), _cityNodeReferralRewards * CITY_NODE_RATE/ FEE_RATIO);
-        IWETH(weth).transfer(ICityNode(cityNode).getCityNodeAdmin(msg.sender), _cityNodeReferralRewards * FEE_RATIO - CITY_NODE_RATE/ FEE_RATIO);
-
-        ICityNode(cityNode).cityNodeIncome( msg.sender,  _cityNodeReferralRewards);
+            IWETH(weth).transfer(_CityNodeTreasury,_cityNodeReferralRewards);
+            ICityNode(cityNode).cityNodeIncome( msg.sender,  _cityNodeReferralRewards);
         }else{
-        IWETH(weth).transfer(rainbowTreasury, _cityNodeReferralRewards);
-
+            IWETH(weth).transfer(rainbowTreasury, _cityNodeReferralRewards);
         }
-        if(_top != address(0) && _middle != address(0) && _down != address(0)){
             if(IFireSoul(fireSoul).checkFID(_top) && IFireSoul(fireSoul).checkFID(_middle) && IFireSoul(fireSoul).checkFID(_down)){
-        IWETH(weth).transfer(_top, _referralRewards * TOP_FEE_RATIO /FEE_RATIO);
-        IWETH(weth).transfer(_middle, _referralRewards * MIDDLE_FEE_RATIO / FEE_RATIO);
-        IWETH(weth).transfer(_down, _referralRewards * DOWN_FEE_RATIO / FEE_RATIO);
-                       }else if(IFireSoul(fireSoul).checkFID(_top) && IFireSoul(fireSoul).checkFID(_middle) && !IFireSoul(fireSoul).checkFID(_down)){
-                               IWETH(weth).transfer(_top, _referralRewards * TOP_FEE_RATIO /FEE_RATIO);
-        IWETH(weth).transfer(_middle, _referralRewards * MIDDLE_FEE_RATIO / FEE_RATIO);
-        IWETH(weth).transfer(rainbowTreasury, _referralRewards * DOWN_FEE_RATIO / FEE_RATIO);
-
-                                             }else if(IFireSoul(fireSoul).checkFID(_top) && !IFireSoul(fireSoul).checkFID(_middle) && !IFireSoul(fireSoul).checkFID(_down)){
-    IWETH(weth).transfer(_top, _referralRewards * TOP_FEE_RATIO /FEE_RATIO);
-        IWETH(weth).transfer(rainbowTreasury, _referralRewards * MIDDLE_FEE_RATIO / FEE_RATIO);
-
-                                             }else {
-        IWETH(weth).transfer(rainbowTreasury, _referralRewards );
-
-                                             }
-        }else if(_top != address(0) && _middle != address(0) && _down == address(0)){
-            if(IFireSoul(fireSoul).checkFID(_top) && IFireSoul(fireSoul).checkFID(_middle)){
-        IWETH(weth).transfer(_top, _referralRewards * TOP_FEE_RATIO /FEE_RATIO);
-        IWETH(weth).transfer(_middle, _referralRewards * MIDDLE_FEE_RATIO / FEE_RATIO);
-        IWETH(weth).transfer(rainbowTreasury, _referralRewards * DOWN_FEE_RATIO/ FEE_RATIO);
-
-            }else if(IFireSoul(fireSoul).checkFID(_top) && !IFireSoul(fireSoul).checkFID(_middle)){
-                IWETH(weth).transfer(_top, _referralRewards * TOP_FEE_RATIO / FEE_RATIO);
-                IWETH(weth).transfer(rainbowTreasury ,_referralRewards * (MIDDLE_FEE_RATIO + DOWN_FEE_RATIO)/FEE_RATIO);
-
+                IWETH(weth).transfer(_top, topRewards);
+                IWETH(weth).transfer(_middle,middleRewards);
+                IWETH(weth).transfer(_down, downRewards);
+            }else if(IFireSoul(fireSoul).checkFID(_top) && IFireSoul(fireSoul).checkFID(_middle) && !IFireSoul(fireSoul).checkFID(_down)){
+                IWETH(weth).transfer(_top, topRewards);
+                IWETH(weth).transfer(_middle,middleRewards);
+                IWETH(weth).transfer(rainbowTreasury, downRewards);
+            }else if(IFireSoul(fireSoul).checkFID(_top) && !IFireSoul(fireSoul).checkFID(_middle) && !IFireSoul(fireSoul).checkFID(_down)){
+                IWETH(weth).transfer(_top, topRewards);
+                IWETH(weth).transfer(rainbowTreasury,middleRewards.add(downRewards));
             }else {
-                IWETH(weth).transfer(rainbowTreasury, _referralRewards);
-
-            }
-        }else if(_top != address(0) && _middle == address(0) && _down == address(0)){
-            if(IFireSoul(fireSoul).checkFID(_top)){
-        IWETH(weth).transfer(_top, _referralRewards * TOP_FEE_RATIO /FEE_RATIO);
-        IWETH(weth).transfer(rainbowTreasury, _referralRewards * (MIDDLE_FEE_RATIO + DOWN_FEE_RATIO)/ FEE_RATIO);
-
-            }else {
-        IWETH(weth).transfer(rainbowTreasury, _referralRewards);
-
-            }
-        }else{
-        IWETH(weth).transfer( rainbowTreasury, _referralRewards);
-
+            IWETH(weth).transfer(rainbowTreasury, _inviteRewards );
         }
     _mint(msg.sender, _idTracker.current(), _amount, '');
     _idTracker.increment();
  
 }
-function calculateFee(uint256 _amount) internal view returns (uint256) {
-    uint256 calculatedFee = _amount * fee * fireSeedDiscount / FEE_RATIO;
-    uint256 discountFactor = 100;
-
-    for (uint256 i = 0; i < _amount; i++) {
-        if (discountFactors[i] > 0) {
-            discountFactor = discountFactors[i];
-        }
-    }
-
-    calculatedFee = calculatedFee * discountFactor / 100;
-
-    if(msg.value != calculatedFee){
-        require(false ,"FireSeed: ETH amount error");
-    }
-   
-
-    return calculatedFee;
-} 
 
     function recommenderNumber(address account) external view returns (uint256) {
         return recommenderInfo[account].length;
@@ -3327,7 +3629,7 @@ function calculateFee(uint256 _amount) internal view returns (uint256) {
         super.setApprovalForAll(operator, approved);
     }
 
-    function check(address _from, address _to) internal pure returns(bool) {
+    function checkUserAddress(address _from, address _to) internal pure returns(bool) {
         if(_from != address(0) && _to != address(0)){
             return true;
         }
@@ -3340,7 +3642,7 @@ function calculateFee(uint256 _amount) internal view returns (uint256) {
         nonReentrant
     {   
             require(from != to, "FireSeed: invalid transfer");
-            require(check(from, to), "FireSeed: The from or to address is invalid");
+            require(checkUserAddress(from, to), "FireSeed: The from or to address is invalid");
          if (recommender[to] == address(0) &&  recommender[from] != to && !isRecommender[to]) {
              recommender[to] = from;
              recommenderInfo[from].push(to);
@@ -3350,7 +3652,7 @@ function calculateFee(uint256 _amount) internal view returns (uint256) {
 
         ownerOfId[to].push(tokenId);
         super.safeTransferFrom(from, to, tokenId, amount, data);
-        emit transferList(block.timestamp, to, checkPid(msg.sender), IFireSoul(fireSoul).checkFIDA(msg.sender), amount);
+        emit transferList(to, getPid(msg.sender), getFid(msg.sender), amount);
     }
     function safeBatchTransferFrom(
         address from,
@@ -3359,7 +3661,7 @@ function calculateFee(uint256 _amount) internal view returns (uint256) {
         uint256[] memory amounts,
         bytes memory data
     ) public virtual override onlyAllowedOperator(from) nonReentrant {
-        require(check(from, to), "FireSeed: The from or to address is invalid");
+        require(checkUserAddress(from, to), "FireSeed: The from or to address is invalid");
          if (recommender[to] == address(0) &&  recommender[from] != to && !isRecommender[to]) {
              recommender[to] = from;
              recommenderInfo[from].push(to);
@@ -3367,16 +3669,8 @@ function calculateFee(uint256 _amount) internal view returns (uint256) {
          }
         super.safeBatchTransferFrom(from, to, ids, amounts, data);
     }
-    function wListLength() public view returns(uint256) {
-       return  whiteList.length;
-    }
-    function ratioDetailsLength() public view returns(uint256) {
-        return ratioDetails.length;
-    }
-    function upclass(address usr) external view returns(address){
-       return recommender[usr];
-    }
-    function burnFireSeed(address _account, uint256 _idOfUser, uint256 _value) external  {
+
+      function burnFireSeed(address _account, uint256 _idOfUser, uint256 _value) external  {
         require(msg.sender == fireSoul,"FireSeed: Only the cauldron can burn tokens");
         for(uint i = 0; i < ownerOfId[_account].length; i ++ ){
 	       if(_idOfUser == ownerOfId[_account][i] && _value == super.balanceOf(_account, _idOfUser)){
@@ -3388,6 +3682,21 @@ function calculateFee(uint256 _amount) internal view returns (uint256) {
        }
         _burn(_account,_idOfUser,_value);
     }
+ 
+     function checkIsNotWhiteListUser(address _address) internal view returns(bool){
+        return whiteList.contains(_address);
+    }
+    function getWhiteList() external view returns(address[] memory) {
+        return whiteList.values();
+    }
+     function getWhiteListLength() external view returns(uint256) {
+        return whiteList.length();
+    }
+  
+    function upclass(address usr) external view returns(address){
+       return recommender[usr];
+    }
+  
     function pauseContract() external  {
         require(msg.sender == guarding, "FireSeed: Only the guardian contract can suspend the contract");
      _pause(); 
@@ -3396,5 +3705,4 @@ function calculateFee(uint256 _amount) internal view returns (uint256) {
         require(msg.sender == guarding, "FireSeed: Only the guardian contract can suspend the contract");
     _unpause();
     }
-    receive() external payable {}
 }
