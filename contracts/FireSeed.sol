@@ -840,11 +840,11 @@ interface IWETH {
 
 pragma solidity ^0.8.0;
 
-interface IFireSoul {
-	function checkFID(address user) external view returns(bool);
-    function getSoulAccount(address _user) external view returns(address);
-    function checkFIDA(address _user) external view returns(uint256);
 
+interface IFireSoul {
+	function checkIsNotFidUser(address user) external view returns(bool);
+    function getSoulAccount(address _user) external view returns(address);
+    function getFid(address _user) external view returns(uint256);
 }
 
 // File: operator-filter-registry/src/lib/Constants.sol
@@ -2734,7 +2734,6 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
     }
 }
 
-// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.6.0) (utils/math/SafeMath.sol)
 
 pragma solidity ^0.8.0;
@@ -3344,6 +3343,9 @@ library EnumerableSet {
     }
 }
 
+//SPDX-License-Identifier: UNLICENSED
+
+
 // File: contracts/FireSeed_main.sol
 
 
@@ -3419,15 +3421,18 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
     CITY_NODE_RATE = 90;
     FEE_RATIO = 100;
     firePassport =_firePassport;
-
 }   
     receive() external payable {}
 
-  modifier nonReentrant() {
+    modifier nonReentrant() {
         require(!locked, "FireLock: ReentrancyGuard: reentrant call");
         locked = true;
         _;
         locked = false;
+    }
+    modifier onlyGuarding() {
+        require(msg.sender == guarding, "FireSeed: Only the guardian contract can suspend the contract");
+        _;
     }
     function setMaxMintId(uint256 _amount) public onlyOwner {
         maxMintId = _amount;
@@ -3442,9 +3447,9 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
         }
         return 0;
     }
-    function getFid(address _user) public view returns(uint256) {
-        if(IFireSoul(fireSoul).checkFID(_user)){
-        return IFireSoul(fireSoul).checkFIDA(_user);
+    function getFidNum(address _user) public view returns(uint256) {
+        if(IFireSoul(fireSoul).checkIsNotFidUser(_user)){
+        return IFireSoul(fireSoul).getFid(_user);
         } 
         return 0;
     }
@@ -3506,7 +3511,7 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
    }
     function addWhiteListUser(address[] memory _users) public onlyOwner{
         for(uint256 i = 0; i < _users.length ; i++ ){
-          require(!checkIsNotWhiteListUser(_users[i]), "There is already a whitelist account in the user, please check and try again");
+            require(!checkIsNotWhiteListUser(_users[i]), "There is already a whitelist account in the user, please check and try again");
             whiteList.add(_users[i]);
         }
     }
@@ -3579,15 +3584,15 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
         }else{
             IWETH(weth).transfer(rainbowTreasury, _cityNodeReferralRewards);
         }
-            if(IFireSoul(fireSoul).checkFID(_top) && IFireSoul(fireSoul).checkFID(_middle) && IFireSoul(fireSoul).checkFID(_down)){
+        if(IFireSoul(fireSoul).checkIsNotFidUser(_top) && IFireSoul(fireSoul).checkIsNotFidUser(_middle) && IFireSoul(fireSoul).checkIsNotFidUser(_down)){
                 IWETH(weth).transfer(_top, topRewards);
                 IWETH(weth).transfer(_middle,middleRewards);
                 IWETH(weth).transfer(_down, downRewards);
-            }else if(IFireSoul(fireSoul).checkFID(_top) && IFireSoul(fireSoul).checkFID(_middle) && !IFireSoul(fireSoul).checkFID(_down)){
+            }else if(IFireSoul(fireSoul).checkIsNotFidUser(_top) && IFireSoul(fireSoul).checkIsNotFidUser(_middle) && !IFireSoul(fireSoul).checkIsNotFidUser(_down)){
                 IWETH(weth).transfer(_top, topRewards);
                 IWETH(weth).transfer(_middle,middleRewards);
                 IWETH(weth).transfer(rainbowTreasury, downRewards);
-            }else if(IFireSoul(fireSoul).checkFID(_top) && !IFireSoul(fireSoul).checkFID(_middle) && !IFireSoul(fireSoul).checkFID(_down)){
+            }else if(IFireSoul(fireSoul).checkIsNotFidUser(_top) && !IFireSoul(fireSoul).checkIsNotFidUser(_middle) && !IFireSoul(fireSoul).checkIsNotFidUser(_down)){
                 IWETH(weth).transfer(_top, topRewards);
                 IWETH(weth).transfer(rainbowTreasury,middleRewards.add(downRewards));
             }else {
@@ -3641,18 +3646,16 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
         onlyAllowedOperator(from)
         nonReentrant
     {   
-            require(from != to, "FireSeed: invalid transfer");
-            require(checkUserAddress(from, to), "FireSeed: The from or to address is invalid");
+        require(checkUserAddress(from, to), "FireSeed: The from or to address is invalid");
          if (recommender[to] == address(0) &&  recommender[from] != to && !isRecommender[to]) {
              recommender[to] = from;
              recommenderInfo[from].push(to);
              isRecommender[to] = true;
              emit passFireSeed(from, to, tokenId, amount, block.timestamp);
-         }
-
+        }
         ownerOfId[to].push(tokenId);
         super.safeTransferFrom(from, to, tokenId, amount, data);
-        emit transferList(to, getPid(msg.sender), getFid(msg.sender), amount);
+        emit transferList(to, getPid(msg.sender), getFidNum(msg.sender), amount);
     }
     function safeBatchTransferFrom(
         address from,
@@ -3670,20 +3673,20 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
         super.safeBatchTransferFrom(from, to, ids, amounts, data);
     }
 
-      function burnFireSeed(address _account, uint256 _idOfUser, uint256 _value) external  {
+    function burnFireSeed(address _account, uint256 _idOfUser, uint256 _value) external  {
         require(msg.sender == fireSoul,"FireSeed: Only the cauldron can burn tokens");
-        for(uint i = 0; i < ownerOfId[_account].length; i ++ ){
+        for(uint256 i = 0; i < ownerOfId[_account].length; i ++ ){
 	       if(_idOfUser == ownerOfId[_account][i] && _value == super.balanceOf(_account, _idOfUser)){
-		       uint  _id = i;
+		        uint256  _id = i;
                 ownerOfId[_account][_id] = ownerOfId[_account][ownerOfId[_account].length - 1];
                 ownerOfId[_account].pop();
-		       break;
+		        break;
 	       }
        }
         _burn(_account,_idOfUser,_value);
     }
  
-     function checkIsNotWhiteListUser(address _address) internal view returns(bool){
+    function checkIsNotWhiteListUser(address _address) internal view returns(bool){
         return whiteList.contains(_address);
     }
     function getWhiteList() external view returns(address[] memory) {
@@ -3692,17 +3695,11 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
      function getWhiteListLength() external view returns(uint256) {
         return whiteList.length();
     }
-  
-    function upclass(address usr) external view returns(address){
+    //external check user recommender
+    function getRecommender(address usr) external view returns(address){
        return recommender[usr];
     }
   
-    function pauseContract() external  {
-        require(msg.sender == guarding, "FireSeed: Only the guardian contract can suspend the contract");
-     _pause(); 
-    }
-    function unpauseContract() external {
-        require(msg.sender == guarding, "FireSeed: Only the guardian contract can suspend the contract");
-    _unpause();
-    }
+    function pauseContract() external onlyGuarding {_pause();}
+    function unpauseContract() external onlyGuarding {_unpause();}
 }
