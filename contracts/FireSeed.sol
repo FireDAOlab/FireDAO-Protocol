@@ -3343,6 +3343,79 @@ library EnumerableSet {
     }
 }
 
+// File: @openzeppelin/contracts/security/ReentrancyGuard.sol
+
+
+// OpenZeppelin Contracts (last updated v4.8.0) (security/ReentrancyGuard.sol)
+
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Contract module that helps prevent reentrant calls to a function.
+ *
+ * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
+ * available, which can be applied to functions to make sure there are no nested
+ * (reentrant) calls to them.
+ *
+ * Note that because there is a single `nonReentrant` guard, functions marked as
+ * `nonReentrant` may not call one another. This can be worked around by making
+ * those functions `private`, and then adding `external` `nonReentrant` entry
+ * points to them.
+ *
+ * TIP: If you would like to learn more about reentrancy and alternative ways
+ * to protect against it, check out our blog post
+ * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
+ */
+abstract contract ReentrancyGuard {
+    // Booleans are more expensive than uint256 or any type that takes up a full
+    // word because each write operation emits an extra SLOAD to first read the
+    // slot's contents, replace the bits taken up by the boolean, and then write
+    // back. This is the compiler's defense against contract upgrades and
+    // pointer aliasing, and it cannot be disabled.
+
+    // The values being non-zero value makes deployment a bit more expensive,
+    // but in exchange the refund on every call to nonReentrant will be lower in
+    // amount. Since refunds are capped to a percentage of the total
+    // transaction's gas, it is best to keep them low in cases like this one, to
+    // increase the likelihood of the full refund coming into effect.
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * Calling a `nonReentrant` function from another `nonReentrant`
+     * function is not supported. It is possible to prevent this from happening
+     * by making the `nonReentrant` function external, and making it call a
+     * `private` function that does the actual work.
+     */
+    modifier nonReentrant() {
+        _nonReentrantBefore();
+        _;
+        _nonReentrantAfter();
+    }
+
+    function _nonReentrantBefore() private {
+        // On the first call to nonReentrant, _status will be _NOT_ENTERED
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+        // Any calls to nonReentrant after this point will fail
+        _status = _ENTERED;
+    }
+
+    function _nonReentrantAfter() private {
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _status = _NOT_ENTERED;
+    }
+}
+
+
 //SPDX-License-Identifier: UNLICENSED
 
 
@@ -3351,8 +3424,8 @@ library EnumerableSet {
 
 pragma solidity ^0.8.0;
 
+contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable,ReentrancyGuard{
 
-contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
     using SafeMath for uint256;
     using Counters for Counters.Counter;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -3363,15 +3436,14 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
     string public constant symbol = "FIRESEED";
     
     address firePassport;
-    bool private locked;
     uint256 public TOP_FEE_RATIO;
     uint256 public MIDDLE_FEE_RATIO;
     uint256 public DOWN_FEE_RATIO;
     uint256 public TOTAL_INVITE_REWARD_RATIO;
     uint256 public TOTAL_CITYNODE_REWARD_RATIO;
     uint256 public TOTAL_MAIN_RATIO;
-    uint256 public CITY_NODE_RATE;
     uint256 private FEE_RATIO;
+    uint256 private CITY_NODE_ADMIN_REWARD_RATIO;
     string public baseURI;
     address private guarding;
     uint256 public maxMintId;
@@ -3391,7 +3463,6 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
     mapping(address => uint256[]) public ownerOfId; 
     mapping(uint256 => uint256) public discountFactors;
     event passFireSeed(address  from, address  to, uint256  tokenId, uint256  amount, uint256  transferTime);
-    event transferList(address to, uint256 pid, uint256 fid, uint256 amount);
     
     constructor(address _firePassport,address _cityNode,address _rainbowTreasury, address _weth) ERC1155("https://bafybeic4doyj66yilxuaesoedeafb6uzzjabrjdff3z43zfmynivturhrq.ipfs.nftstorage.link/0.json") {
     _idTracker.increment();
@@ -3415,21 +3486,15 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
     TOTAL_MAIN_RATIO = 70;
     TOTAL_INVITE_REWARD_RATIO = 20;
     TOTAL_CITYNODE_REWARD_RATIO = 10;
+    CITY_NODE_ADMIN_REWARD_RATIO = 10;
     fireSeedDiscount = 100;
     cityNode = _cityNode;
     rainbowTreasury = _rainbowTreasury;
-    CITY_NODE_RATE = 90;
     FEE_RATIO = 100;
     firePassport =_firePassport;
 }   
     receive() external payable {}
-
-    modifier nonReentrant() {
-        require(!locked, "FireLock: ReentrancyGuard: reentrant call");
-        locked = true;
-        _;
-        locked = false;
-    }
+  
     modifier onlyGuarding() {
         require(msg.sender == guarding, "FireSeed: Only the guardian contract can suspend the contract");
         _;
@@ -3521,11 +3586,6 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
             whiteList.remove(_users[i]);
         }
     }
-  
-    function setCityNodeRate(uint256 _rate) public onlyOwner {
-        require(_rate <= 100 ,"_rate error");
-        CITY_NODE_RATE = _rate;
-    }
     function calculateFee(uint256 _amount) internal view returns (uint256) {
         uint256 calculatedFee = _amount.mul(fee).mul(fireSeedDiscount).div(100);
         uint256 discountFactor = 100;
@@ -3574,12 +3634,15 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
     uint256 topRewards = _inviteRewards.mul(TOP_FEE_RATIO).div(FEE_RATIO);
     uint256 middleRewards = _inviteRewards.mul(MIDDLE_FEE_RATIO).div(FEE_RATIO);
     uint256 downRewards = _inviteRewards.mul(DOWN_FEE_RATIO).div(FEE_RATIO);
+    uint256 _cityNodeAdminRewards = _cityNodeReferralRewards.mul(CITY_NODE_ADMIN_REWARD_RATIO).div(FEE_RATIO);
+
 
     require(msg.value == _fee, 'Please send the correct number of ETH');
         IWETH(weth).deposit{value: _fee}();
         IWETH(weth).transfer(rainbowTreasury, _mainFee);
         if(ICityNode(cityNode).isNotCityNodeUsers(msg.sender) && ICityNode(cityNode).isNotCityNodeLight(msg.sender)){
-            IWETH(weth).transfer(_CityNodeTreasury,_cityNodeReferralRewards);
+            IWETH(weth).transfer(ICityNode(cityNode).getCityNodeAdmin(msg.sender),_cityNodeAdminRewards);
+            IWETH(weth).transfer(_CityNodeTreasury,_cityNodeReferralRewards.sub(_cityNodeAdminRewards));
             ICityNode(cityNode).cityNodeIncome( msg.sender,  _cityNodeReferralRewards);
         }else{
             IWETH(weth).transfer(rainbowTreasury, _cityNodeReferralRewards);
@@ -3655,7 +3718,6 @@ contract FireSeed is ERC1155 ,DefaultOperatorFilterer, Ownable, Pausable{
         }
         ownerOfId[to].push(tokenId);
         super.safeTransferFrom(from, to, tokenId, amount, data);
-        emit transferList(to, getPid(msg.sender), getFidNum(msg.sender), amount);
     }
     function safeBatchTransferFrom(
         address from,
