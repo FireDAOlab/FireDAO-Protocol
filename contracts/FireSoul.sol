@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 
 /**
  * @title ERC721 token receiver interface
@@ -1025,241 +1024,6 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
     }
 }
 
-/**
- * @dev ERC721 token with storage based token URI management.
- */
-abstract contract ERC721URIStorage is ERC721 {
-    using Strings for uint256;
-
-    // Optional mapping for token URIs
-    mapping(uint256 => string) private _tokenURIs;
-
-    /**
-     * @dev See {IERC721Metadata-tokenURI}.
-     */
-    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        _requireMinted(tokenId);
-
-        string memory _tokenURI = _tokenURIs[tokenId];
-        string memory base = _baseURI();
-
-        // If there is no base URI, return the token URI.
-        if (bytes(base).length == 0) {
-            return _tokenURI;
-        }
-        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
-        if (bytes(_tokenURI).length > 0) {
-            return string(abi.encodePacked(base, _tokenURI));
-        }
-
-        return super.tokenURI(tokenId);
-    }
-
-    /**
-     * @dev Sets `_tokenURI` as the tokenURI of `tokenId`.
-     *
-     * Requirements:
-     *
-     * - `tokenId` must exist.
-     */
-    function _setTokenURI(uint256 tokenId, string memory _tokenURI) internal virtual {
-        require(_exists(tokenId), "ERC721URIStorage: URI set of nonexistent token");
-        _tokenURIs[tokenId] = _tokenURI;
-    }
-
-    /**
-     * @dev See {ERC721-_burn}. This override additionally checks to see if a
-     * token-specific URI was set for the token, and if so, it deletes the token URI from
-     * the storage mapping.
-     */
-    function _burn(uint256 tokenId) internal virtual override {
-        super._burn(tokenId);
-
-        if (bytes(_tokenURIs[tokenId]).length != 0) {
-            delete _tokenURIs[tokenId];
-        }
-    }
-}
-
-// File: contracts/interface/ITreasuryDistributionContract.sol
-
-pragma solidity ^0.8.0;
-
-interface ITreasuryDistributionContract {
-  function AllocationFund() external;
-  function setSourceOfIncome(uint num,address user,uint256 amount) external;
-}
-
-contract FirePassport is IFirePassport,ERC721URIStorage {
-   mapping(address => User) public userInfo;
-   mapping(string => bool) public override usernameExists;
-   string public baseURI;
-   string public baseExtension = ".json";
-   User[] public users;
-   address public owner;
-   event Register(uint  pid,string  username, address  account,string email,uint joinTime,string information);
-   bool public feeOn;
-   uint public fee;
-   uint public minUsernameLength = 4;
-   uint public maxUsernameLength = 30;
-   address public firekun = 0x9EABe6013C52e23c4564900465e87093a36A1d4b;
-   address public weth;
-   address public feeReceiver;
-   address public treasuryDistributionContract;
-   bool public useTreasuryDistributionContract;
-   bool public pause;
-   constructor(address  _feeReceiver,address _weth,string memory baseURI_) ERC721("Fire Passport", "FIREPP") {
-      owner = msg.sender;
-      feeReceiver = _feeReceiver;
-      weth = _weth;
-      User memory user = User({PID:1,account:firekun,username:"FireKun",information:"",joinTime:block.timestamp});
-      users.push(user);
-      userInfo[firekun] = user;
-      usernameExists["firekun"] = true;
-      baseURI = baseURI_;
-      _mint(firekun, 1);
-   }
- 
-   modifier checkUsername(string memory username) {
-      bytes memory bStr = bytes(username);
-      require(bStr.length >=minUsernameLength && bStr.length < maxUsernameLength ,"Username length exceeds limit");
-      require(((uint8(bStr[0]) >= 97) && (uint8(bStr[0]) <= 122)) || ((uint8(bStr[0]) >= 65) && (uint8(bStr[0]) <= 90)),"Username begins with a letter"); 
-         for (uint i = 0; i < bStr.length; i++) {
-            require(((uint8(bStr[i]) >= 65) && (uint8(bStr[i]) <= 90)) || ((uint8(bStr[i]) >= 48) && (uint8(bStr[i]) <= 57)) || ((uint8(bStr[i]) >= 97) && (uint8(bStr[i]) <= 122)) ||(uint8(bStr[i]) == 95),"The username contains illegal characters");
-         }
-    
-      _;
-   }
-   modifier isOwner() {
-      require(msg.sender == owner,"access denied");
-      _;
-   }
-   modifier allowRegister() {
-      require(pause == false,"Registration has been suspended");
-      _;
-   }
-   function register(string memory username,string memory email,string memory information) payable external allowRegister checkUsername(username) {
-      string memory trueUsername = username;
-      username = _toLower(username);
-      require(usernameExists[username] == false,"This username has already been taken");
-      require(userInfo[msg.sender].joinTime == 0,"This username has already been taken");
-      if(feeOn){
-          if(msg.value == 0) {
-              TransferHelper.safeTransferFrom(weth,msg.sender,feeReceiver,fee);
-          } else {
-              require(msg.value == fee,"provide the error number on ETH");
-              IWETH(weth).deposit{value: fee}();
-              IWETH(weth).transfer(feeReceiver,fee);
-          }
-      }
-      uint id = users.length + 1;
-      User memory user = User({PID:id,account:msg.sender,username:username,information:information,joinTime:block.timestamp});
-      users.push(user);
-      userInfo[msg.sender] = user;
-      usernameExists[username] = true;
-      _mint(msg.sender, id);
-      if(useTreasuryDistributionContract) {
-         ITreasuryDistributionContract(treasuryDistributionContract).setSourceOfIncome(5,msg.sender,fee);
-      }
-      emit Register(id,trueUsername,msg.sender,email,block.timestamp,information);
-   }
-   function setBaseURI(string memory baseURI_) isOwner external {
-      baseURI = baseURI_;
-   }
-   function _baseURI() internal view virtual override returns (string memory) {
-      return baseURI;
-   }
-   function tokenURI(uint256 tokenId)
-    public
-    view
-    virtual
-    override
-    returns (string memory)
-  {
-    require(
-      _exists(tokenId),
-      "ERC721Metadata: URI query for nonexistent token"
-    );
-
-    string memory currentBaseURI = _baseURI();
-    return bytes(currentBaseURI).length > 0
-        ? string(abi.encodePacked(currentBaseURI, Strings.toString(tokenId), baseExtension))
-        : "";
-  }
-   function changeUserInfo(string memory information) external {
-      require(userInfo[msg.sender].PID != 0,'This user does not exist');
-      User storage user = userInfo[msg.sender];
-      user.information = information;
-      users[user.PID - 1].information = information;
-   }
-   function getUserCount() external view override returns(uint) {
-      return users.length;
-   }
-    function hasPID(address user) external override view returns(bool){
-        return userInfo[user].PID !=0;
-    }
-    function getUserInfo(address user) external override view returns(User memory){
-        return userInfo[user];
-    }
-   function setFee(uint fees) isOwner public {
-      require(fees <= 100000000000000000,'The maximum fee is 0.1ETH');
-      fee = fees;
-   }
-   function pauseRegister(bool set) isOwner external {
-      pause = set;
-   }
-   function _toLower(string memory str) internal pure returns (string memory) {
-        bytes memory bStr = bytes(str);
-        bytes memory bLower = new bytes(bStr.length);
-        for (uint i = 0; i < bStr.length; i++) {
-            if ((uint8(bStr[i]) >= 65) && (uint8(bStr[i]) <= 90)) {
-                bLower[i] = bytes1(uint8(bStr[i]) + 32);
-            } else {
-                bLower[i] = bStr[i];
-            }
-        }
-        return string(bLower);
-    }
-
-   function setFeeOn(bool set) isOwner public {
-     feeOn = set;
-   }
-
-   function setTreasuryDistributionContractOn(bool set) isOwner external {
-      useTreasuryDistributionContract = set;
-   }
-
-   function setUsernameLimitLength(uint min,uint max)  isOwner public {
-      minUsernameLength = min;
-      maxUsernameLength = max;
-   }
-
-   function changeFeeReceiver(address  receiver) isOwner external {
-      feeReceiver = receiver;
-   }
-
-   function setTreasuryDistributionContract(address _treasuryDistributionContract) isOwner external {
-      require(_treasuryDistributionContract != address(0),"contract is the zero address");
-      treasuryDistributionContract = _treasuryDistributionContract;
-   }
-
-   function changeOwner(address account) isOwner public {
-      require(account != address(0),"account is the zero address");
-      owner = account;
-   }
-
-   function _transfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal virtual override  {
-       from;
-       to;
-       tokenId;
-       revert("ERC721:transfer declined");
-    }
-     receive() external payable {}
-}
 
 // OpenZeppelin Contracts (last updated v4.7.0) (access/Ownable.sol)
 
@@ -1342,132 +1106,1260 @@ abstract contract Ownable is Context {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
-
+// OpenZeppelin Contracts (last updated v4.8.0) (utils/math/Math.sol)
 
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "./lib/TransferHelper.sol";
-import "./interface/ISbt003.sol";
-import "./interface/IFireSeed.sol";
-import "./interface/IWETH.sol";
 
-contract FireSoul is ERC721,Ownable{
-    FirePassport fp;
-    struct whiteList{
-        address user;
-        uint256 pid;
+/**
+ * @dev Standard math utilities missing in the Solidity language.
+ */
+library Math {
+    enum Rounding {
+        Down, // Toward negative infinity
+        Up, // Toward infinity
+        Zero // Toward zero
     }
+
+    /**
+     * @dev Returns the largest of two numbers.
+     */
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a > b ? a : b;
+    }
+
+    /**
+     * @dev Returns the smallest of two numbers.
+     */
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+
+    /**
+     * @dev Returns the average of two numbers. The result is rounded towards
+     * zero.
+     */
+    function average(uint256 a, uint256 b) internal pure returns (uint256) {
+        // (a + b) / 2 can overflow.
+        return (a & b) + (a ^ b) / 2;
+    }
+
+    /**
+     * @dev Returns the ceiling of the division of two numbers.
+     *
+     * This differs from standard division with `/` in that it rounds up instead
+     * of rounding down.
+     */
+    function ceilDiv(uint256 a, uint256 b) internal pure returns (uint256) {
+        // (a + b - 1) / b can overflow on addition, so we distribute.
+        return a == 0 ? 0 : (a - 1) / b + 1;
+    }
+
+    /**
+     * @notice Calculates floor(x * y / denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
+     * @dev Original credit to Remco Bloemen under MIT license (https://xn--2-umb.com/21/muldiv)
+     * with further edits by Uniswap Labs also under MIT license.
+     */
+    function mulDiv(
+        uint256 x,
+        uint256 y,
+        uint256 denominator
+    ) internal pure returns (uint256 result) {
+        unchecked {
+            // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2^256 and mod 2^256 - 1, then use
+            // use the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
+            // variables such that product = prod1 * 2^256 + prod0.
+            uint256 prod0; // Least significant 256 bits of the product
+            uint256 prod1; // Most significant 256 bits of the product
+            assembly {
+                let mm := mulmod(x, y, not(0))
+                prod0 := mul(x, y)
+                prod1 := sub(sub(mm, prod0), lt(mm, prod0))
+            }
+
+            // Handle non-overflow cases, 256 by 256 division.
+            if (prod1 == 0) {
+                return prod0 / denominator;
+            }
+
+            // Make sure the result is less than 2^256. Also prevents denominator == 0.
+            require(denominator > prod1);
+
+            ///////////////////////////////////////////////
+            // 512 by 256 division.
+            ///////////////////////////////////////////////
+
+            // Make division exact by subtracting the remainder from [prod1 prod0].
+            uint256 remainder;
+            assembly {
+                // Compute remainder using mulmod.
+                remainder := mulmod(x, y, denominator)
+
+                // Subtract 256 bit number from 512 bit number.
+                prod1 := sub(prod1, gt(remainder, prod0))
+                prod0 := sub(prod0, remainder)
+            }
+
+            // Factor powers of two out of denominator and compute largest power of two divisor of denominator. Always >= 1.
+            // See https://cs.stackexchange.com/q/138556/92363.
+
+            // Does not overflow because the denominator cannot be zero at this stage in the function.
+            uint256 twos = denominator & (~denominator + 1);
+            assembly {
+                // Divide denominator by twos.
+                denominator := div(denominator, twos)
+
+                // Divide [prod1 prod0] by twos.
+                prod0 := div(prod0, twos)
+
+                // Flip twos such that it is 2^256 / twos. If twos is zero, then it becomes one.
+                twos := add(div(sub(0, twos), twos), 1)
+            }
+
+            // Shift in bits from prod1 into prod0.
+            prod0 |= prod1 * twos;
+
+            // Invert denominator mod 2^256. Now that denominator is an odd number, it has an inverse modulo 2^256 such
+            // that denominator * inv = 1 mod 2^256. Compute the inverse by starting with a seed that is correct for
+            // four bits. That is, denominator * inv = 1 mod 2^4.
+            uint256 inverse = (3 * denominator) ^ 2;
+
+            // Use the Newton-Raphson iteration to improve the precision. Thanks to Hensel's lifting lemma, this also works
+            // in modular arithmetic, doubling the correct bits in each step.
+            inverse *= 2 - denominator * inverse; // inverse mod 2^8
+            inverse *= 2 - denominator * inverse; // inverse mod 2^16
+            inverse *= 2 - denominator * inverse; // inverse mod 2^32
+            inverse *= 2 - denominator * inverse; // inverse mod 2^64
+            inverse *= 2 - denominator * inverse; // inverse mod 2^128
+            inverse *= 2 - denominator * inverse; // inverse mod 2^256
+
+            // Because the division is now exact we can divide by multiplying with the modular inverse of denominator.
+            // This will give us the correct result modulo 2^256. Since the preconditions guarantee that the outcome is
+            // less than 2^256, this is the final result. We don't need to compute the high bits of the result and prod1
+            // is no longer required.
+            result = prod0 * inverse;
+            return result;
+        }
+    }
+
+    /**
+     * @notice Calculates x * y / denominator with full precision, following the selected rounding direction.
+     */
+    function mulDiv(
+        uint256 x,
+        uint256 y,
+        uint256 denominator,
+        Rounding rounding
+    ) internal pure returns (uint256) {
+        uint256 result = mulDiv(x, y, denominator);
+        if (rounding == Rounding.Up && mulmod(x, y, denominator) > 0) {
+            result += 1;
+        }
+        return result;
+    }
+
+    /**
+     * @dev Returns the square root of a number. If the number is not a perfect square, the value is rounded down.
+     *
+     * Inspired by Henry S. Warren, Jr.'s "Hacker's Delight" (Chapter 11).
+     */
+    function sqrt(uint256 a) internal pure returns (uint256) {
+        if (a == 0) {
+            return 0;
+        }
+
+        // For our first guess, we get the biggest power of 2 which is smaller than the square root of the target.
+        //
+        // We know that the "msb" (most significant bit) of our target number `a` is a power of 2 such that we have
+        // `msb(a) <= a < 2*msb(a)`. This value can be written `msb(a)=2**k` with `k=log2(a)`.
+        //
+        // This can be rewritten `2**log2(a) <= a < 2**(log2(a) + 1)`
+        // → `sqrt(2**k) <= sqrt(a) < sqrt(2**(k+1))`
+        // → `2**(k/2) <= sqrt(a) < 2**((k+1)/2) <= 2**(k/2 + 1)`
+        //
+        // Consequently, `2**(log2(a) / 2)` is a good first approximation of `sqrt(a)` with at least 1 correct bit.
+        uint256 result = 1 << (log2(a) >> 1);
+
+        // At this point `result` is an estimation with one bit of precision. We know the true value is a uint128,
+        // since it is the square root of a uint256. Newton's method converges quadratically (precision doubles at
+        // every iteration). We thus need at most 7 iteration to turn our partial result with one bit of precision
+        // into the expected uint128 result.
+        unchecked {
+            result = (result + a / result) >> 1;
+            result = (result + a / result) >> 1;
+            result = (result + a / result) >> 1;
+            result = (result + a / result) >> 1;
+            result = (result + a / result) >> 1;
+            result = (result + a / result) >> 1;
+            result = (result + a / result) >> 1;
+            return min(result, a / result);
+        }
+    }
+
+    /**
+     * @notice Calculates sqrt(a), following the selected rounding direction.
+     */
+    function sqrt(uint256 a, Rounding rounding) internal pure returns (uint256) {
+        unchecked {
+            uint256 result = sqrt(a);
+            return result + (rounding == Rounding.Up && result * result < a ? 1 : 0);
+        }
+    }
+
+    /**
+     * @dev Return the log in base 2, rounded down, of a positive value.
+     * Returns 0 if given 0.
+     */
+    function log2(uint256 value) internal pure returns (uint256) {
+        uint256 result = 0;
+        unchecked {
+            if (value >> 128 > 0) {
+                value >>= 128;
+                result += 128;
+            }
+            if (value >> 64 > 0) {
+                value >>= 64;
+                result += 64;
+            }
+            if (value >> 32 > 0) {
+                value >>= 32;
+                result += 32;
+            }
+            if (value >> 16 > 0) {
+                value >>= 16;
+                result += 16;
+            }
+            if (value >> 8 > 0) {
+                value >>= 8;
+                result += 8;
+            }
+            if (value >> 4 > 0) {
+                value >>= 4;
+                result += 4;
+            }
+            if (value >> 2 > 0) {
+                value >>= 2;
+                result += 2;
+            }
+            if (value >> 1 > 0) {
+                result += 1;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @dev Return the log in base 2, following the selected rounding direction, of a positive value.
+     * Returns 0 if given 0.
+     */
+    function log2(uint256 value, Rounding rounding) internal pure returns (uint256) {
+        unchecked {
+            uint256 result = log2(value);
+            return result + (rounding == Rounding.Up && 1 << result < value ? 1 : 0);
+        }
+    }
+
+    /**
+     * @dev Return the log in base 10, rounded down, of a positive value.
+     * Returns 0 if given 0.
+     */
+    function log10(uint256 value) internal pure returns (uint256) {
+        uint256 result = 0;
+        unchecked {
+            if (value >= 10**64) {
+                value /= 10**64;
+                result += 64;
+            }
+            if (value >= 10**32) {
+                value /= 10**32;
+                result += 32;
+            }
+            if (value >= 10**16) {
+                value /= 10**16;
+                result += 16;
+            }
+            if (value >= 10**8) {
+                value /= 10**8;
+                result += 8;
+            }
+            if (value >= 10**4) {
+                value /= 10**4;
+                result += 4;
+            }
+            if (value >= 10**2) {
+                value /= 10**2;
+                result += 2;
+            }
+            if (value >= 10**1) {
+                result += 1;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @dev Return the log in base 10, following the selected rounding direction, of a positive value.
+     * Returns 0 if given 0.
+     */
+    function log10(uint256 value, Rounding rounding) internal pure returns (uint256) {
+        unchecked {
+            uint256 result = log10(value);
+            return result + (rounding == Rounding.Up && 10**result < value ? 1 : 0);
+        }
+    }
+
+    /**
+     * @dev Return the log in base 256, rounded down, of a positive value.
+     * Returns 0 if given 0.
+     *
+     * Adding one to the result gives the number of pairs of hex symbols needed to represent `value` as a hex string.
+     */
+    function log256(uint256 value) internal pure returns (uint256) {
+        uint256 result = 0;
+        unchecked {
+            if (value >> 128 > 0) {
+                value >>= 128;
+                result += 16;
+            }
+            if (value >> 64 > 0) {
+                value >>= 64;
+                result += 8;
+            }
+            if (value >> 32 > 0) {
+                value >>= 32;
+                result += 4;
+            }
+            if (value >> 16 > 0) {
+                value >>= 16;
+                result += 2;
+            }
+            if (value >> 8 > 0) {
+                result += 1;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @dev Return the log in base 10, following the selected rounding direction, of a positive value.
+     * Returns 0 if given 0.
+     */
+    function log256(uint256 value, Rounding rounding) internal pure returns (uint256) {
+        unchecked {
+            uint256 result = log256(value);
+            return result + (rounding == Rounding.Up && 1 << (result * 8) < value ? 1 : 0);
+        }
+    }
+}
+
+// OpenZeppelin Contracts (last updated v4.8.0) (utils/Strings.sol)
+
+pragma solidity ^0.8.0;
+
+
+/**
+ * @dev String operations.
+ */
+library Strings {
+    bytes16 private constant _SYMBOLS = "0123456789abcdef";
+    uint8 private constant _ADDRESS_LENGTH = 20;
+
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` decimal representation.
+     */
+    function toString(uint256 value) internal pure returns (string memory) {
+        unchecked {
+            uint256 length = Math.log10(value) + 1;
+            string memory buffer = new string(length);
+            uint256 ptr;
+            /// @solidity memory-safe-assembly
+            assembly {
+                ptr := add(buffer, add(32, length))
+            }
+            while (true) {
+                ptr--;
+                /// @solidity memory-safe-assembly
+                assembly {
+                    mstore8(ptr, byte(mod(value, 10), _SYMBOLS))
+                }
+                value /= 10;
+                if (value == 0) break;
+            }
+            return buffer;
+        }
+    }
+
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.
+     */
+    function toHexString(uint256 value) internal pure returns (string memory) {
+        unchecked {
+            return toHexString(value, Math.log256(value) + 1);
+        }
+    }
+
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.
+     */
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(2 * length + 2);
+        buffer[0] = "0";
+        buffer[1] = "x";
+        for (uint256 i = 2 * length + 1; i > 1; --i) {
+            buffer[i] = _SYMBOLS[value & 0xf];
+            value >>= 4;
+        }
+        require(value == 0, "Strings: hex length insufficient");
+        return string(buffer);
+    }
+
+    /**
+     * @dev Converts an `address` with fixed length of 20 bytes to its not checksummed ASCII `string` hexadecimal representation.
+     */
+    function toHexString(address addr) internal pure returns (string memory) {
+        return toHexString(uint256(uint160(addr)), _ADDRESS_LENGTH);
+    }
+}
+
+pragma solidity >=0.6.0;
+
+// helper methods for interacting with ERC20 tokens and sending ETH that do not consistently return true/false
+library TransferHelper {
+    function safeApprove(address token, address to, uint value) internal {
+        // bytes4(keccak256(bytes('approve(address,uint256)')));
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x095ea7b3, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: APPROVE_FAILED');
+    }
+
+    function safeTransfer(address token, address to, uint value) internal {
+        // bytes4(keccak256(bytes('transfer(address,uint256)')));
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0xa9059cbb, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: TRANSFER_FAILED');
+    }
+
+    function safeTransferFrom(address token, address from, address to, uint value) internal {
+        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'TransferHelper: TRANSFER_FROM_FAILED');
+    }
+
+    function safeTransferETH(address to, uint value) internal {
+        (bool success,) = to.call{value:value}(new bytes(0));
+        require(success, 'TransferHelper: ETH_TRANSFER_FAILED');
+    }
+}
+
+pragma solidity ^0.8.0;
+
+interface ISbt003 {
+	function mint(address account, uint256 amount) external;
+	function burn(address account, uint256 amount) external;
+}
+pragma solidity ^0.8.0;
+
+interface IFireSeed {
+    function getRecommender(address usr) external view returns(address);
+    function burnFireSeed(address _account, uint256 _idOfUser, uint256 _value) external ;
+}
+
+pragma solidity >=0.5.0;
+
+interface IWETH {
+    function deposit() external payable;
+    function transfer(address to, uint value) external returns (bool);
+    function withdraw(uint) external;
+}
+
+// OpenZeppelin Contracts (last updated v4.6.0) (utils/math/SafeMath.sol)
+
+pragma solidity ^0.8.0;
+
+// CAUTION
+// This version of SafeMath should only be used with Solidity 0.8 or later,
+// because it relies on the compiler's built in overflow checks.
+
+/**
+ * @dev Wrappers over Solidity's arithmetic operations.
+ *
+ * NOTE: `SafeMath` is generally not needed starting with Solidity 0.8, since the compiler
+ * now has built in overflow checking.
+ */
+library SafeMath {
+    /**
+     * @dev Returns the addition of two unsigned integers, with an overflow flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            uint256 c = a + b;
+            if (c < a) return (false, 0);
+            return (true, c);
+        }
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, with an overflow flag.
+     *
+     * _Available since v3.4._
+     */
+    function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b > a) return (false, 0);
+            return (true, a - b);
+        }
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+            // benefit is lost if 'b' is also tested.
+            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
+            if (a == 0) return (true, 0);
+            uint256 c = a * b;
+            if (c / a != b) return (false, 0);
+            return (true, c);
+        }
+    }
+
+    /**
+     * @dev Returns the division of two unsigned integers, with a division by zero flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b == 0) return (false, 0);
+            return (true, a / b);
+        }
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.
+     *
+     * _Available since v3.4._
+     */
+    function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {
+        unchecked {
+            if (b == 0) return (false, 0);
+            return (true, a % b);
+        }
+    }
+
+    /**
+     * @dev Returns the addition of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `+` operator.
+     *
+     * Requirements:
+     *
+     * - Addition cannot overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a + b;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting on
+     * overflow (when the result is negative).
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a - b;
+    }
+
+    /**
+     * @dev Returns the multiplication of two unsigned integers, reverting on
+     * overflow.
+     *
+     * Counterpart to Solidity's `*` operator.
+     *
+     * Requirements:
+     *
+     * - Multiplication cannot overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a * b;
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers, reverting on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator.
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a / b;
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * reverting when dividing by zero.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a % b;
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on
+     * overflow (when the result is negative).
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {trySub}.
+     *
+     * Counterpart to Solidity's `-` operator.
+     *
+     * Requirements:
+     *
+     * - Subtraction cannot overflow.
+     */
+    function sub(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        unchecked {
+            require(b <= a, errorMessage);
+            return a - b;
+        }
+    }
+
+    /**
+     * @dev Returns the integer division of two unsigned integers, reverting with custom message on
+     * division by zero. The result is rounded towards zero.
+     *
+     * Counterpart to Solidity's `/` operator. Note: this function uses a
+     * `revert` opcode (which leaves remaining gas untouched) while Solidity
+     * uses an invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function div(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        unchecked {
+            require(b > 0, errorMessage);
+            return a / b;
+        }
+    }
+
+    /**
+     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),
+     * reverting with custom message when dividing by zero.
+     *
+     * CAUTION: This function is deprecated because it requires allocating memory for the error
+     * message unnecessarily. For custom revert reasons use {tryMod}.
+     *
+     * Counterpart to Solidity's `%` operator. This function uses a `revert`
+     * opcode (which leaves remaining gas untouched) while Solidity uses an
+     * invalid opcode to revert (consuming all remaining gas).
+     *
+     * Requirements:
+     *
+     * - The divisor cannot be zero.
+     */
+    function mod(
+        uint256 a,
+        uint256 b,
+        string memory errorMessage
+    ) internal pure returns (uint256) {
+        unchecked {
+            require(b > 0, errorMessage);
+            return a % b;
+        }
+    }
+}
+
+
+
+// OpenZeppelin Contracts v4.4.1 (utils/Counters.sol)
+
+pragma solidity ^0.8.0;
+
+/**
+ * @title Counters
+ * @author Matt Condon (@shrugs)
+ * @dev Provides counters that can only be incremented, decremented or reset. This can be used e.g. to track the number
+ * of elements in a mapping, issuing ERC721 ids, or counting request ids.
+ *
+ * Include with `using Counters for Counters.Counter;`
+ */
+library Counters {
+    struct Counter {
+        // This variable should never be directly accessed by users of the library: interactions must be restricted to
+        // the library's function. As of Solidity v0.5.2, this cannot be enforced, though there is a proposal to add
+        // this feature: see https://github.com/ethereum/solidity/issues/4637
+        uint256 _value; // default: 0
+    }
+
+    function current(Counter storage counter) internal view returns (uint256) {
+        return counter._value;
+    }
+
+    function increment(Counter storage counter) internal {
+        unchecked {
+            counter._value += 1;
+        }
+    }
+
+    function decrement(Counter storage counter) internal {
+        uint256 value = counter._value;
+        require(value > 0, "Counter: decrement overflow");
+        unchecked {
+            counter._value = value - 1;
+        }
+    }
+
+    function reset(Counter storage counter) internal {
+        counter._value = 0;
+    }
+}
+
+// OpenZeppelin Contracts (last updated v4.8.0) (utils/structs/EnumerableSet.sol)
+// This file was procedurally generated from scripts/generate/templates/EnumerableSet.js.
+
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Library for managing
+ * https://en.wikipedia.org/wiki/Set_(abstract_data_type)[sets] of primitive
+ * types.
+ *
+ * Sets have the following properties:
+ *
+ * - Elements are added, removed, and checked for existence in constant time
+ * (O(1)).
+ * - Elements are enumerated in O(n). No guarantees are made on the ordering.
+ *
+ * ```
+ * contract Example {
+ *     // Add the library methods
+ *     using EnumerableSet for EnumerableSet.AddressSet;
+ *
+ *     // Declare a set state variable
+ *     EnumerableSet.AddressSet private mySet;
+ * }
+ * ```
+ *
+ * As of v3.3.0, sets of type `bytes32` (`Bytes32Set`), `address` (`AddressSet`)
+ * and `uint256` (`UintSet`) are supported.
+ *
+ * [WARNING]
+ * ====
+ * Trying to delete such a structure from storage will likely result in data corruption, rendering the structure
+ * unusable.
+ * See https://github.com/ethereum/solidity/pull/11843[ethereum/solidity#11843] for more info.
+ *
+ * In order to clean an EnumerableSet, you can either remove all elements one by one or create a fresh instance using an
+ * array of EnumerableSet.
+ * ====
+ */
+library EnumerableSet {
+    // To implement this library for multiple types with as little code
+    // repetition as possible, we write it in terms of a generic Set type with
+    // bytes32 values.
+    // The Set implementation uses private functions, and user-facing
+    // implementations (such as AddressSet) are just wrappers around the
+    // underlying Set.
+    // This means that we can only create new EnumerableSets for types that fit
+    // in bytes32.
+
+    struct Set {
+        // Storage of set values
+        bytes32[] _values;
+        // Position of the value in the `values` array, plus 1 because index 0
+        // means a value is not in the set.
+        mapping(bytes32 => uint256) _indexes;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function _add(Set storage set, bytes32 value) private returns (bool) {
+        if (!_contains(set, value)) {
+            set._values.push(value);
+            // The value is stored at length-1, but we add 1 to all indexes
+            // and use 0 as a sentinel value
+            set._indexes[value] = set._values.length;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function _remove(Set storage set, bytes32 value) private returns (bool) {
+        // We read and store the value's index to prevent multiple reads from the same storage slot
+        uint256 valueIndex = set._indexes[value];
+
+        if (valueIndex != 0) {
+            // Equivalent to contains(set, value)
+            // To delete an element from the _values array in O(1), we swap the element to delete with the last one in
+            // the array, and then remove the last element (sometimes called as 'swap and pop').
+            // This modifies the order of the array, as noted in {at}.
+
+            uint256 toDeleteIndex = valueIndex - 1;
+            uint256 lastIndex = set._values.length - 1;
+
+            if (lastIndex != toDeleteIndex) {
+                bytes32 lastValue = set._values[lastIndex];
+
+                // Move the last value to the index where the value to delete is
+                set._values[toDeleteIndex] = lastValue;
+                // Update the index for the moved value
+                set._indexes[lastValue] = valueIndex; // Replace lastValue's index to valueIndex
+            }
+
+            // Delete the slot where the moved value was stored
+            set._values.pop();
+
+            // Delete the index for the deleted slot
+            delete set._indexes[value];
+
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function _contains(Set storage set, bytes32 value) private view returns (bool) {
+        return set._indexes[value] != 0;
+    }
+
+    /**
+     * @dev Returns the number of values on the set. O(1).
+     */
+    function _length(Set storage set) private view returns (uint256) {
+        return set._values.length;
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function _at(Set storage set, uint256 index) private view returns (bytes32) {
+        return set._values[index];
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function _values(Set storage set) private view returns (bytes32[] memory) {
+        return set._values;
+    }
+
+    // Bytes32Set
+
+    struct Bytes32Set {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _add(set._inner, value);
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(Bytes32Set storage set, bytes32 value) internal returns (bool) {
+        return _remove(set._inner, value);
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(Bytes32Set storage set, bytes32 value) internal view returns (bool) {
+        return _contains(set._inner, value);
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(Bytes32Set storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
+        return _at(set._inner, index);
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function values(Bytes32Set storage set) internal view returns (bytes32[] memory) {
+        bytes32[] memory store = _values(set._inner);
+        bytes32[] memory result;
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := store
+        }
+
+        return result;
+    }
+
+    // AddressSet
+
+    struct AddressSet {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(AddressSet storage set, address value) internal returns (bool) {
+        return _add(set._inner, bytes32(uint256(uint160(value))));
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(AddressSet storage set, address value) internal returns (bool) {
+        return _remove(set._inner, bytes32(uint256(uint160(value))));
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(AddressSet storage set, address value) internal view returns (bool) {
+        return _contains(set._inner, bytes32(uint256(uint160(value))));
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(AddressSet storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(AddressSet storage set, uint256 index) internal view returns (address) {
+        return address(uint160(uint256(_at(set._inner, index))));
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function values(AddressSet storage set) internal view returns (address[] memory) {
+        bytes32[] memory store = _values(set._inner);
+        address[] memory result;
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := store
+        }
+
+        return result;
+    }
+
+    // UintSet
+
+    struct UintSet {
+        Set _inner;
+    }
+
+    /**
+     * @dev Add a value to a set. O(1).
+     *
+     * Returns true if the value was added to the set, that is if it was not
+     * already present.
+     */
+    function add(UintSet storage set, uint256 value) internal returns (bool) {
+        return _add(set._inner, bytes32(value));
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the value was removed from the set, that is if it was
+     * present.
+     */
+    function remove(UintSet storage set, uint256 value) internal returns (bool) {
+        return _remove(set._inner, bytes32(value));
+    }
+
+    /**
+     * @dev Returns true if the value is in the set. O(1).
+     */
+    function contains(UintSet storage set, uint256 value) internal view returns (bool) {
+        return _contains(set._inner, bytes32(value));
+    }
+
+    /**
+     * @dev Returns the number of values in the set. O(1).
+     */
+    function length(UintSet storage set) internal view returns (uint256) {
+        return _length(set._inner);
+    }
+
+    /**
+     * @dev Returns the value stored at position `index` in the set. O(1).
+     *
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(UintSet storage set, uint256 index) internal view returns (uint256) {
+        return uint256(_at(set._inner, index));
+    }
+
+    /**
+     * @dev Return the entire set in an array
+     *
+     * WARNING: This operation will copy the entire storage to memory, which can be quite expensive. This is designed
+     * to mostly be used by view accessors that are queried without any gas fees. Developers should keep in mind that
+     * this function has an unbounded cost, and using it as part of a state-changing function may render the function
+     * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
+     */
+    function values(UintSet storage set) internal view returns (uint256[] memory) {
+        bytes32[] memory store = _values(set._inner);
+        uint256[] memory result;
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            result := store
+        }
+
+        return result;
+    }
+}
+
+// File: @openzeppelin/contracts/security/ReentrancyGuard.sol
+
+
+// OpenZeppelin Contracts (last updated v4.8.0) (security/ReentrancyGuard.sol)
+
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Contract module that helps prevent reentrant calls to a function.
+ *
+ * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
+ * available, which can be applied to functions to make sure there are no nested
+ * (reentrant) calls to them.
+ *
+ * Note that because there is a single `nonReentrant` guard, functions marked as
+ * `nonReentrant` may not call one another. This can be worked around by making
+ * those functions `private`, and then adding `external` `nonReentrant` entry
+ * points to them.
+ *
+ * TIP: If you would like to learn more about reentrancy and alternative ways
+ * to protect against it, check out our blog post
+ * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
+ */
+abstract contract ReentrancyGuard {
+    // Booleans are more expensive than uint256 or any type that takes up a full
+    // word because each write operation emits an extra SLOAD to first read the
+    // slot's contents, replace the bits taken up by the boolean, and then write
+    // back. This is the compiler's defense against contract upgrades and
+    // pointer aliasing, and it cannot be disabled.
+
+    // The values being non-zero value makes deployment a bit more expensive,
+    // but in exchange the refund on every call to nonReentrant will be lower in
+    // amount. Since refunds are capped to a percentage of the total
+    // transaction's gas, it is best to keep them low in cases like this one, to
+    // increase the likelihood of the full refund coming into effect.
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * Calling a `nonReentrant` function from another `nonReentrant`
+     * function is not supported. It is possible to prevent this from happening
+     * by making the `nonReentrant` function external, and making it call a
+     * `private` function that does the actual work.
+     */
+    modifier nonReentrant() {
+        _nonReentrantBefore();
+        _;
+        _nonReentrantAfter();
+    }
+
+    function _nonReentrantBefore() private {
+        // On the first call to nonReentrant, _status will be _NOT_ENTERED
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+        // Any calls to nonReentrant after this point will fail
+        _status = _ENTERED;
+    }
+
+    function _nonReentrantAfter() private {
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _status = _NOT_ENTERED;
+    }
+}
+
+//SPDX-License-Identifier: UNLICENSED
+
+pragma solidity ^0.8.0;
+
+contract FireSoul is ERC721,Ownable,ReentrancyGuard{
+
+    using SafeMath for uint256;
+    using Counters for Counters.Counter;
+    using EnumerableSet for EnumerableSet.AddressSet;
+
+    Counters.Counter private _idTracker;
+    EnumerableSet.AddressSet private whiteList;
+    EnumerableSet.AddressSet private fidUserList;
+    
     string public baseURI;
     string public baseExtension = ".json";
     address public FireSeedAddress;
-    uint256 public FID;
     uint256 public FEE_RATIO;
-    uint256 public DOWN_FEE_RATIO;
-    uint256 public MIDDLE_FEE_RATIO;
     uint256 public TOP_FEE_RATIO;
+    uint256 public MIDDLE_FEE_RATIO;
+    uint256 public DOWN_FEE_RATIO;
     uint256 public BASE_FEE;
-    uint256 public TOTAL_SBT_003_AMOUNT;
-    uint256 public SBT003_RATE_ONE;
-    uint256 public SBT003_RATE_TWO;
-    uint256 public SBT003_RATE_THREE;
-    address[] public sbtAddress;
+    uint256 public TOTAL_REWARD_SBT_003_AMOUNT;
+    uint256 public SBT003_RATE_TOP;
+    uint256 public SBT003_RATE_MIDDLE;
+    uint256 public SBT003_RATE_DOWN;
     address public firePassport;
     bool public status;
     bool public feeOn;
     uint256 public fee;
     address public weth;
     address public feeReceiver;
-    address public treasuryDistributionContract;
     address public pauseControlAddress;
-    address[] public sbt;
-    uint[] public  coefficient;
     address public sbt003;
-    address[] public UserHaveFID;   whiteList[] public whiteLists;
-    mapping(address => bool) public wlist;
     mapping(address => uint256) public UserFID;
-    mapping(address => bool) public haveFID;
-    mapping(address => uint256[]) public sbtTokenAmount; 
     mapping(address => address) public UserToSoul;
-       //set fireSeed, BaseUri, sbt003
+    
     constructor(address _fireseed, address _firePassport,address _weth) ERC721("FireSoul", "FireSoul"){
+    _idTracker.increment();
     firePassport = _firePassport;
     FireSeedAddress =_fireseed;
     weth = _weth;
-    BASE_FEE = 100;
-    FEE_RATIO = 80;
-    DOWN_FEE_RATIO = 14;
+    BASE_FEE = 80;
+    FEE_RATIO = 100;
+    TOP_FEE_RATIO = 14;
     MIDDLE_FEE_RATIO = 4;
-    TOP_FEE_RATIO = 2;
-    TOTAL_SBT_003_AMOUNT = 10;
-    SBT003_RATE_ONE = 70;
-    SBT003_RATE_TWO = 20;
-    SBT003_RATE_THREE = 10;
-
+    DOWN_FEE_RATIO = 2;
+    TOTAL_REWARD_SBT_003_AMOUNT = 10;
+    SBT003_RATE_TOP = 70;
+    SBT003_RATE_MIDDLE = 20;
+    SBT003_RATE_DOWN = 10;
     baseURI = "https://bafybeibjssse6npb5gqh7pkcuvvvgyr6k7xu5q6eaxq7kp3azgdfgj4exy.ipfs.nftstorage.link/";
-
-
 }
-function setFp(address payable _fp) public onlyOwner {
-    require(_fp != address(0) , "fail setting");
-    fp = FirePassport(_fp);
-
-}
-    function getWListLength() public view returns(uint256) {
-        return whiteLists.length;
-    }
     //onlyOwner
-    function setTreasuryDistributionContract(address _addr) public onlyOwner {
-        treasuryDistributionContract = _addr;
-    }
-    function setWhiteList(address[] memory _user) public onlyOwner {
-        for(uint256 i = 0; i < _user.length; i++) {
-            require(!wlist[_user[i]],"FireSoul: invalid setting");
-            checkRepeat(_user[i]);
-            wlist[_user[i]] = true;
-           whiteList memory _whiteList = whiteList({
-               user:msg.sender,
-               pid:checkPid(msg.sender)
-           });
-           whiteLists.push(_whiteList);
+    function addWhiteListUser(address[] memory _users) public onlyOwner {
+        for(uint256 i = 0; i < _users.length; i++) {
+            require(!checkIsNotWhiteListUser(_users[i]), "There is already a whitelist account in the user, please check and try again");
+            whiteList.add(_users[i]);
         }
     }
-    function checkRepeat(address _addr) internal{
-        for(uint256 i = 0 ; i < whiteLists.length; i++) {
-            if(_addr == whiteLists[i].user){
-                require(false, "FireSoul: invalid setting");
-            }
+    function removeFromWhiteList(address[] memory _users) public onlyOwner{
+        for(uint256 i = 0 ; i< _users.length; i++){
+            require(checkIsNotWhiteListUser(_users[i]), "FireSeed: User not in whitelist");
+            whiteList.remove(_users[i]);
         }
     }
-        function checkPid(address _user) public view returns(uint256){
-         (
-             uint256 PID,
-             ,
-             ,
-             ,
-
-         ) = fp.userInfo(_user);
-		return uint256(PID);
-    }
-    function deleteWhiteList(address[] memory _user) public onlyOwner{
-        for(uint256 i = 0 ; i< _user.length; i++){
-            require(wlist[_user[i]],"FireSoul: invalid setting");
-            delete wlist[_user[i]];
-            deleteList(_user[i]);
-        }
-}
-    function deleteList(address _addr) internal {
-        for(uint256 j = 0 ; j < whiteLists.length ; j ++) {
-               if(whiteLists[j].user == _addr){
-                whiteLists[j] = whiteLists[whiteLists.length -1];
-                whiteLists.pop();
-            }
-        }
-
-    }
-
     function setSbt003Address(address _sbt003) public onlyOwner{
 	    sbt003 = _sbt003;
-}
+    }
     function setWeth(address _weth) public onlyOwner{
         weth = _weth;
     }
@@ -1480,14 +2372,14 @@ function setFp(address payable _fp) public onlyOwner {
         MIDDLE_FEE_RATIO = middle;
         DOWN_FEE_RATIO = down;
     }
-    function setSbt003AmountRate(uint256 top , uint256 middle ,uint256 down) public onlyOwner{
-        require(top + middle + down == 100 ,"FireSoul: invalid setting");
-        SBT003_RATE_ONE  = top;
-        SBT003_RATE_TWO  = middle;
-        SBT003_RATE_THREE = down;
+    function setSbt003AmountRate(uint256 _top , uint256 _middle ,uint256 _down) public onlyOwner{
+        require(_top + _middle + _down == 100 ,"FireSoul: invalid setting");
+        SBT003_RATE_TOP  = _top;
+        SBT003_RATE_MIDDLE  = _middle;
+        SBT003_RATE_DOWN = _down;
     }
     function setSBT003Amount(uint256 _amount) public onlyOwner{
-        TOTAL_SBT_003_AMOUNT = _amount;
+        TOTAL_REWARD_SBT_003_AMOUNT = _amount;
     } 
     function setBaseURI(string memory baseURI_) external onlyOwner {
         baseURI = baseURI_;
@@ -1507,9 +2399,7 @@ function setFp(address payable _fp) public onlyOwner {
            require(msg.sender == pauseControlAddress,"address is error");
            status = !status;
        }
-    function checkFID(address user) external view returns(bool){
-           return haveFID[user];
-       }
+
     function _baseURI() internal view virtual override returns (string memory) {
         return baseURI;
     }
@@ -1531,78 +2421,56 @@ function setFp(address payable _fp) public onlyOwner {
         : "";
   }
 
-    function burnToMint(uint256 _tokenId) external payable {
+    function burnToMint(uint256 _tokenId) external payable nonReentrant {
         require(!status, "status is error");
-        require(haveFID[msg.sender] == false, "you already have FID");
+        require(!fidUserList.contains(msg.sender), "you already have FID");
         require(IERC721(firePassport).balanceOf(msg.sender) != 0 ,"you haven't passport");
 
-        address down = IFireSeed(FireSeedAddress).upclass(msg.sender);
-        address middle = IFireSeed(FireSeedAddress).upclass(down);
-        address superior = IFireSeed(FireSeedAddress).upclass(middle);
+        address _top = IFireSeed(FireSeedAddress).getRecommender(msg.sender);
+        address _middle = IFireSeed(FireSeedAddress).getRecommender(_top);
+        address _down = IFireSeed(FireSeedAddress).getRecommender(_middle);
         
-        if(feeOn){
-        uint256 feeReceiverAmount = fee * FEE_RATIO / BASE_FEE;
-        uint256 downAmount = fee * DOWN_FEE_RATIO/BASE_FEE;
-        uint256 middleAmount = fee * MIDDLE_FEE_RATIO/BASE_FEE;
-        uint256 superiorAmount = fee * TOP_FEE_RATIO/BASE_FEE;
-        
-          if(msg.value == 0) {
-              if(down != address(0) && middle != address(0) && superior != address(0)){
-              TransferHelper.safeTransferFrom(weth,msg.sender,feeReceiver,feeReceiverAmount);
-              TransferHelper.safeTransferFrom(weth,msg.sender,down,downAmount);
-              TransferHelper.safeTransferFrom(weth,msg.sender,middle,middleAmount);
-              TransferHelper.safeTransferFrom(weth,msg.sender,superior,superiorAmount);
-          ITreasuryDistributionContract(treasuryDistributionContract).setSourceOfIncome(5,msg.sender,feeReceiverAmount );
-
-              } else{
-              TransferHelper.safeTransferFrom(weth,msg.sender,feeReceiver,fee);
-          ITreasuryDistributionContract(treasuryDistributionContract).setSourceOfIncome(5,msg.sender,fee );
-
-              }
-          } else {
+        if(!feeOn){
+            uint256 feeReceiverAmount = fee.mul(BASE_FEE).div(FEE_RATIO);
+            uint256 _topAmount = fee.mul(TOP_FEE_RATIO).div(FEE_RATIO);
+            uint256 _middleAmount = fee.mul(MIDDLE_FEE_RATIO).div(FEE_RATIO);
+            uint256 _downAmount = fee.mul(DOWN_FEE_RATIO).div(FEE_RATIO);
               require(msg.value == fee,"provide the error number on ETH");
               IWETH(weth).deposit{value: fee}();
-              if(down != address(0) && middle != address(0) && superior != address(0)){
+              if(_top != address(0) && _middle != address(0) && _down != address(0)){
               IWETH(weth).transfer(feeReceiver,feeReceiverAmount);
-              IWETH(weth).transfer(down,downAmount);
-              IWETH(weth).transfer(middle,middleAmount);
-              IWETH(weth).transfer(superior,superiorAmount);
-          ITreasuryDistributionContract(treasuryDistributionContract).setSourceOfIncome(5,msg.sender,feeReceiverAmount );
-
+              IWETH(weth).transfer(_top,_topAmount);
+              IWETH(weth).transfer(_middle,_middleAmount);
+              IWETH(weth).transfer(_down,_downAmount);
               }else{
               IWETH(weth).transfer(feeReceiver,fee);
-          ITreasuryDistributionContract(treasuryDistributionContract).setSourceOfIncome(5,msg.sender, fee);
-
               }
-
           }
-      }
         IFireSeed(FireSeedAddress).burnFireSeed(msg.sender,_tokenId ,1);
-        _mint(msg.sender, FID);
-        UserHaveFID.push(msg.sender);
-        UserFID[msg.sender] = FID;
-        haveFID[msg.sender] = true;
+        _mint(msg.sender, _idTracker.current());
+        fidUserList.add(msg.sender);
+        UserFID[msg.sender] = _idTracker.current();
         address _Soul = address(new Soul(msg.sender , address(this)));
         UserToSoul[msg.sender] = _Soul;
-        if(UserToSoul[superior] != address(0) && UserToSoul[middle] != address(0) && UserToSoul[down] != address(0)){
-        ISbt003(sbt003).mint(UserToSoul[down], TOTAL_SBT_003_AMOUNT *SBT003_RATE_ONE /BASE_FEE *10**18);
-        ISbt003(sbt003).mint(UserToSoul[middle],TOTAL_SBT_003_AMOUNT*SBT003_RATE_TWO/BASE_FEE*10**18);
-        ISbt003(sbt003).mint(UserToSoul[superior],TOTAL_SBT_003_AMOUNT* SBT003_RATE_THREE/BASE_FEE*10**18);
+        if(UserToSoul[_top] != address(0) && UserToSoul[_middle] != address(0) && UserToSoul[_down] != address(0)){
+        uint256 rewardAmountTop = TOTAL_REWARD_SBT_003_AMOUNT.mul(SBT003_RATE_TOP).div(FEE_RATIO).mul(10**18);
+        uint256 rewardAmountMiddle = TOTAL_REWARD_SBT_003_AMOUNT.mul(SBT003_RATE_MIDDLE).div(FEE_RATIO).mul(10**18);
+        uint256 rewardAmountDown = TOTAL_REWARD_SBT_003_AMOUNT.mul(SBT003_RATE_DOWN).div(FEE_RATIO).mul(10**18);
+        ISbt003(sbt003).mint(UserToSoul[_top],rewardAmountTop);
+        ISbt003(sbt003).mint(UserToSoul[_middle],rewardAmountMiddle);
+        ISbt003(sbt003).mint(UserToSoul[_down],rewardAmountDown);
         }
-        FID++;
+        _idTracker.increment();
+
     }
-    function getUserHaveFIDLength() public view returns(uint256) {
-        return UserHaveFID.length;
-    }
+
     function getSoulAccount(address _user) external view returns(address){
         return UserToSoul[_user];
     }
-   
-
     function setFireSeedAddress(address _FireSeedAddress) public onlyOwner{
             FireSeedAddress = _FireSeedAddress;
     }
-    function checkFIDA(address _user) external view returns(uint256) {
+    function getFid(address _user) external view returns(uint256) {
         return  UserFID[_user];
     }
       /**
@@ -1644,6 +2512,30 @@ function setFp(address payable _fp) public onlyOwner {
         require(from == msg.sender && to == msg.sender ,"the FID not to transfer others" );
         require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721: caller is not token owner nor approved");
         _safeTransfer(from, to, tokenId, data);
+    }
+    function checkIsNotFidUser(address _address) external view returns(bool){
+        return fidUserList.contains(_address);
+    }
+    function getFidUserList() external view returns(address[] memory) {
+        return fidUserList.values();
+    }
+     function getFidUserListLength() external view returns(uint256) {
+        return fidUserList.length();
+    }
+    function checkIsNotWhiteListUser(address _address) internal view returns(bool){
+        return whiteList.contains(_address);
+    }
+    function getWhiteList() external view returns(address[] memory) {
+        return whiteList.values();
+    }
+     function getWhiteListLength() external view returns(uint256) {
+        return whiteList.length();
+    }
+     function getPid(address _user) public view returns(uint256){
+         if(IFirePassport(firePassport).hasPID(_user)){
+        return IFirePassport(firePassport).getUserInfo(_user).PID;
+        }
+        return 0;
     }
 }
 
