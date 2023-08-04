@@ -6,12 +6,11 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./lib/TransferHelper.sol";
-
 import "./interface/IFirePassport.sol";
 import "./interface/IFireSoul.sol";
 
 
-contract airdropFlm is Ownable {
+contract airdropUSDT is Ownable {
     struct airDropListInfo{
     
         address user;
@@ -22,7 +21,7 @@ contract airdropFlm is Ownable {
     address firePassport;
     address fireSoul;
     uint256 private id;
-    address public flm;
+    address public usdt;
     using EnumerableSet for EnumerableSet.AddressSet;
     airDropListInfo[] public airDropListInfos;
     EnumerableSet.AddressSet private adminsLevelTwo;
@@ -42,12 +41,12 @@ contract airdropFlm is Ownable {
         _;
     }
     constructor(address _token, address _firePassport, address _fireSoul) {
-        flm = _token;
+        usdt = _token;
         firePassport = _firePassport;
         fireSoul = _fireSoul;
     }
-    function setFlm(address _Flm) public onlyOwner {
-        flm = _Flm;
+    function setUsdt(address _usdt) public onlyOwner {
+        usdt = _usdt;
     }
 
     function setAdminsLevelTwo(address[] memory _addr) public onlyOwner{
@@ -135,7 +134,7 @@ contract airdropFlm is Ownable {
     }
     function Claim(uint256 _amount) public onlyWhiteListUser{
         require(checkUserCanClaim(msg.sender) >= _amount, "Insufficient quantity available for extraction");
-        IERC20(flm).transfer(msg.sender, _amount);
+        IERC20(usdt).transfer(msg.sender, _amount);
         reduceAmount(msg.sender,_amount);
         userTotalClaim[msg.sender] += _amount;
     }
