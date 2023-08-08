@@ -1350,18 +1350,23 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     EnumerableSet.AddressSet private adminsLevelThree;
     EnumerableSet.AddressSet private adminsLevelFour;
     EnumerableSet.AddressSet private activateAccount;
-
-	ERC20 public fdt;
+    ERC20 public flm;
+	ERC20 public fdtOg;
+    uint256 maxUint256 = 2**256 - 1;
+    uint adminRewardLevel;
     bool public pidStatusForAdmin;
     bool public pidStatusForUser;
     bool public initRate;
 	address public weth;
+    address public receiveRemainingInvitationRewards;
     address public firePassport_;
     uint256 public registerId;
+    uint256 public flmRatio;
 	uint256 public salePrice;
     uint256 public maxTwo;
     uint256 public maxThree;
     uint256 public maxFour;
+    uint256 public activateAccountUsedAmount;
     uint256 public userBuyMax;
     uint256[] public inviteRate;
     uint256 public buyId;
@@ -1382,10 +1387,14 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     mapping(address => bool) public isRecommender;
     mapping(address => address) public recommender;
     mapping(address => address[]) public userSetAdminsForThree;
+    mapping(address => address[]) public userSetAdminsForFour;
     mapping(address => bool) public isNotRegister;
-    mapping(address => uint256) public setUserMaxAmount;
+    mapping(address => uint256) public activeInviteAmount;
+    mapping(address => uint256) public activeUsedAmount;
+    mapping(address => mapping(uint256 => address)) public userTeamReward;
+    mapping(address => address) public userTeam;
 	AggregatorV3Interface internal priceFeed;
-    event allRecord(uint256 no,uint256 pid, string name,  address addr,uint256 ethAmount,uint256 usdtAmount,uint256 rate,uint256 fdtAmount,uint256 time);
+    event allRecord(uint256 no,uint256 pid, string name,  address addr,uint256 ethAmount,uint256 usdtAmount,uint256 fdtAmount,uint256 time);
     event allRegister(uint256 id, address _user);
     modifier onlyAdminTwo() {
         require(checkAddrForAdminLevelTwo(msg.sender), "Address is not an  level two administrator");
@@ -1408,19 +1417,34 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         * ETH Address :0x5D0C84105D44919Dee994d729f74f8EcD05c30fB
         * mumbai test net address: 0x0715A7794a1dc8e42615F059dD6e406A6594651A
 	*/
-	constructor(ERC20 _fdt,  address _weth, address _firePassport) {
+	constructor(ERC20 _fdtOg,ERC20 _flm,  address _weth, address _firePassport) {
 		priceFeed = AggregatorV3Interface(0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612);//arb one 
 		// priceFeed = AggregatorV3Interface(0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08);//arb goerli
 		// priceFeed = AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A);//mumbai
-		fdt = _fdt;
+		fdtOg = _fdtOg;
+        flm = _flm;
 		weth = _weth;
 		salePrice = 11;
         maxTwo = 50;
         maxThree = 50;
+        maxFour = 50;
+        activateAccountUsedAmount = 50;
         userBuyMax = 2000000000000000000;
         firePassport_ = _firePassport;
         registerId =1;
+        adminRewardLevel = 3;
+        flmRatio = 10;
+        receiveRemainingInvitationRewards = msg.sender;
 	}
+    function setreceiveRemainingInvitationRewards(address _addr) public onlyOwner {
+        receiveRemainingInvitationRewards = _addr;
+    }
+    function setFlmRatio(uint256 _ratio) public onlyOwner {
+        flmRatio = _ratio;
+    }
+    function setActivateAccountUsedAmount(uint256 _amount) public onlyOwner {
+        activateAccountUsedAmount = _amount;
+    }
 
     function isValidNumber(uint256 number) private view returns (bool) {
         for (uint i = 0; i < validNumbers.length; i++) {
@@ -1446,20 +1470,35 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     function setUserBuyMax(uint256 _amount) public onlyOwner{
         userBuyMax = _amount;
     }
-	function setFDTAddress(ERC20 _fdt) public onlyOwner {
-		fdt = _fdt;
+    function setFlmAddress(ERC20 _flm) public onlyOwner {
+        flm = _flm;
+    }
+	function setFDTAddress(ERC20 _fdtOg) public onlyOwner {
+		fdtOg = _fdtOg;
 	}
 	function setSalePrice(uint256 _salePrice) public onlyOwner {
         require(_salePrice >= 1 ,"The minimum set conversion ratio is 0.001");
 		salePrice = _salePrice;
 	}
      function setAdminForTwo(uint256 _max) public onlyOwner{
+         if(_max == 0) {
+        maxTwo = maxUint256;
+        return;
+        }
         maxTwo = _max;
     }
     function setAdminForThree(uint256 _max) public onlyOwner {
+        if(_max == 0) {
+        maxTwo = maxUint256;
+        return;
+        }
         maxThree = _max;
     }
     function setAdminForFour(uint256 _max) public onlyOwner {
+        if(_max == 0) {
+        maxTwo = maxUint256;
+        return;
+        }
         maxFour = _max;
     }
   
@@ -1483,16 +1522,13 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
             require(!isNotRegister[_addr[i]],"A registered account cannot be an administrator");
             require(!checkAddrForAdminLevelTwo(_addr[i]),"This address is already an administrator for level two");
             require(!isRecommender[_addr[i]],"This address has already been invited");
-           if (recommender[_addr[i]] == address(0) &&  recommender[msg.sender] != _addr[i] && !isRecommender[_addr[i]]) {
-             recommender[_addr[i]] = msg.sender;
-             isRecommender[_addr[i]] = true;
+          
             adminsLevelTwo.add(_addr[i]);
-        }else{
-            revert("Please check and re-enter if the input is wrong");
-        }
+        
         }
     }
     function setAdminLevelThree(address[] memory _addr) public onlyAdminTwo {
+        require(userSetAdminsForThree[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender),"over limit");
         for(uint256 i = 0; i < _addr.length; i++){
             if(pidStatusForAdmin){
                 require(IFirePassport(firePassport_).hasPID(_addr[i]),"address has no pid");
@@ -1511,6 +1547,7 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         }
     }
       function setAdminLevelFour(address[] memory _addr) public onlyadminThree{
+        require(userSetAdminsForFour[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender),"over limit");
         for(uint i=0;i<_addr.length;i++){
             if(pidStatusForUser){
                 require(IFirePassport(firePassport_).hasPID(_addr[i]),"address has no pid");
@@ -1520,6 +1557,8 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
            if (recommender[_addr[i]] == address(0) &&  recommender[msg.sender] != _addr[i] && !isRecommender[_addr[i]]) {
              recommender[_addr[i]] = msg.sender;
              isRecommender[_addr[i]] = true;
+            userSetAdminsForFour[msg.sender].push( _addr[i]);
+
         }else{
             revert("Please check and re-enter if the input is wrong");
             }
@@ -1558,9 +1597,26 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         return 0;
     }
 
-    function setActivateAccount(address[] memory  _user) public onlyadminFour{
+    function setActivateAccountForL4(address[] memory  _user) public onlyadminFour{
+    require(activeInviteAmount[msg.sender] <= getMax(msg.sender) && _user.length < getMax(msg.sender),"over limit");
         for(uint256 i =0 ; i < _user.length ;i++) {
+            require(!isNotRegister[_user[i]],"There is a registered address in this address");
             require(!checkAddrForActivateAccount(_user[i]), "Activate Account Settings Duplicate");
+            activateAccount.add(_user[i]);
+            recommender[_user[i]] = msg.sender;
+            isRecommender[_user[i]] = true;
+            activeInviteAmount[msg.sender] = activeInviteAmount[msg.sender].add(1);
+            userTeamReward[_user[i]][0] = msg.sender;
+            userTeamReward[_user[i]][1] = recommender[msg.sender];
+            userTeamReward[_user[i]][2] = recommender[recommender[msg.sender]];
+
+        }
+    }
+    function setActivateAccountForL2AndL3(address[] memory _user)public   {
+        require(checkAddrForAdminLevelTwo(msg.sender) || checkAddrForAdminLevelThree(msg.sender),"You are not a level 2 or level 3 administrator");
+        
+        for(uint256 i = 0 ; i < _user.length ; i++){
+            require(checkAddrForActivateAccount(msg.sender) == false && isNotRegister[msg.sender] == true,"This account has a wallet address that has become an active account");
             activateAccount.add(_user[i]);
         }
     }
@@ -1659,14 +1715,17 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
     function removeValidNumbers() public onlyOwner{
         validNumbers.pop();
     }
+  
 
     function register(address _activationAddress) public {
+        require(checkAddrForActivateAccount(_activationAddress),"This address is not an activated account and cannot be used as an invitation");
+        require(activeUsedAmount[_activationAddress] <= activateAccountUsedAmount,"The activated account exceeds the invitation limit");
         if(checkAddrForActivateAccount(msg.sender) == true && isNotRegister[msg.sender] == false) {
             isNotRegister[msg.sender] = true;
             emit allRegister(registerId,msg.sender);
             registerId++;
+            return;
         }
-        require(checkAddrForActivateAccount(_activationAddress),"This address is not an activated account and cannot be used as an invitation");
         require(!isNotRegister[msg.sender], "your address is already registered");
         if (recommender[msg.sender] != _activationAddress) {
             recommender[msg.sender] = _activationAddress;
@@ -1674,7 +1733,14 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         }else{
             revert("Please check and re-enter if the input is wrong");
         }
+        userTeam[msg.sender] =_activationAddress;
+        userTeamReward[msg.sender][0] = userTeamReward[_activationAddress][0];
+        userTeamReward[msg.sender][1] = userTeamReward[_activationAddress][1];
+        userTeamReward[msg.sender][2] = userTeamReward[_activationAddress][2];
+
         isNotRegister[msg.sender] = true;
+        activeUsedAmount[_activationAddress] = activeUsedAmount[_activationAddress].add(1);
+
         emit allRegister(registerId,msg.sender);
         registerId++;
 
@@ -1687,15 +1753,22 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         }else if(!checkAddrForActivateAccount(msg.sender)){
             activateAccount.add(msg.sender);
         }
-        address[invitationLevel] memory inviteUser;
+        address[invitationLevel] memory invite;
         uint256 fdtAmount = fee.mul(getLatesPrice()).div(10**5 * salePrice);
         uint256 usdtAmount = fee.mul(getLatesPrice()).div(10**8);
-        for(uint i =0; i < invitationLevel; i++){
-        inviteUser[0] = recommender[msg.sender];
-        inviteUser[i+1] = recommender[inviteUser[i]];
+        uint256 flmAmount = fdtAmount.mul(flmRatio).div(100);
+        for(uint i = 0 ; i < invitationLevel; i++){
+        invite[0] = recommender[msg.sender];
+        invite[i+1] = recommender[invite[i]];
         }
+        // address invite1 = recommender[msg.sender];
+        // address invite2 =recommender[invite1];
+        // address invite3 =recommender[invite2];
+        // address invite4 =recommender[invite3];
+        // address invite5 =recommender[invite4];
+  
 
-        require(fdtAmount <= getBalanceOfFDT(), "the contract FDT balance is not enough");
+        require(fdtAmount <= getBalanceOfFDTOG(), "the contract FDT balance is not enough");
         require(userTotalBuy[msg.sender].add(fee) <= userBuyMax, "over limit");
         require(isValidNumber(fee), "invalid input");
 
@@ -1703,15 +1776,23 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
                 IWETH(weth).deposit{value: fee}();
                 for (uint256 i = 0; i < assignAndRates.length; i++) {
                     IWETH(weth).transfer(assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(100));
+                    }
+                    for(uint i = 0; i< invitationLevel;i++){
+                    if(invite[i] == address(0)){
+                    IWETH(weth).transfer(receiveRemainingInvitationRewards, fee.mul(inviteRate[i]).div(100));
+                    }
+                    IWETH(weth).transfer(invite[i], fee.mul(inviteRate[i]).div(100));
+                    }
+                for(uint i= 0 ; i < adminRewardLevel;i ++){
+                IWETH(weth).transfer(userTeamReward[msg.sender][i], fee.mul(inviteRate[i]).div(100));
+
                 }
-                for(uint i =0 ; i <invitationLevel; i ++) {
-                IWETH(weth).transfer(inviteUser[i], fee.mul(inviteRate[i]).div(100));
-                }
-        fdt.transfer(msg.sender, fdtAmount);
+        flm.transfer(msg.sender, flmAmount);
+        fdtOg.transfer(msg.sender, fdtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);
        
-        emit allRecord(buyId, getPid(msg.sender), getName(msg.sender), msg.sender, fee, usdtAmount, salePrice, fdtAmount, block.timestamp);
+        emit allRecord(buyId, getPid(msg.sender), getName(msg.sender), msg.sender, fee, usdtAmount,  fdtAmount, block.timestamp);
         buyId++;
     }
 	function getLatesPrice() public view returns (uint256) {
@@ -1738,8 +1819,8 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         }
         return 0;
     }
-	function getBalanceOfFDT() public view returns(uint256) {
-		return fdt.balanceOf(address(this));
+	function getBalanceOfFDTOG() public view returns(uint256) {
+		return fdtOg.balanceOf(address(this));
 	}
 
     function getInviteRate() public view returns(uint256) {
@@ -1767,11 +1848,11 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         return adminsLevelThree.length();
     }
  
-    function getfdtAmount(uint256 fee) public view returns(uint256) {
+    function getfdtOgAmount(uint256 fee) public view returns(uint256) {
 	return (fee*getLatesPrice()/10**5)/salePrice;
     }
     function getValue() public view returns(uint256) {
-        return getBalanceOfFDT()*(salePrice/1000);
+        return getBalanceOfFDTOG()*(salePrice/1000);
     }
     function getValidNumbers() public view returns(uint256) {
         return validNumbers.length;
