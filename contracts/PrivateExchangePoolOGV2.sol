@@ -1335,10 +1335,10 @@ library SafeMath {
 //	SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract PrivateExchangePoolOG is Ownable,Pausable {
+contract PrivateExchangePoolOgV2 is Ownable,Pausable {
 
-    using EnumerableSet for EnumerableSet.AddressSet;
     using SafeMath for uint256;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
   uint256 constant private invitationLevel = 5;
     struct assignAndRate {
@@ -1522,7 +1522,6 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
             require(!isNotRegister[_addr[i]],"A registered account cannot be an administrator");
             require(!checkAddrForAdminLevelTwo(_addr[i]),"This address is already an administrator for level two");
             require(!isRecommender[_addr[i]],"This address has already been invited");
-          
             adminsLevelTwo.add(_addr[i]);
         
         }
@@ -1819,6 +1818,9 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         }
         return 0;
     }
+    function getBalanceOfFlm() public view returns(uint256){
+        return flm.balanceOf(address(this));
+    }
 	function getBalanceOfFDTOG() public view returns(uint256) {
 		return fdtOg.balanceOf(address(this));
 	}
@@ -1874,4 +1876,3 @@ contract PrivateExchangePoolOG is Ownable,Pausable {
         _unpause();
     }
 }
-
