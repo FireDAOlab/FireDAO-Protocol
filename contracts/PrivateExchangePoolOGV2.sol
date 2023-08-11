@@ -1345,7 +1345,6 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
         address assign;
         uint256 rate;
     }
-
     EnumerableSet.AddressSet private adminsLevelTwo;
     EnumerableSet.AddressSet private adminsLevelThree;
     EnumerableSet.AddressSet private adminsLevelFour;
@@ -1353,11 +1352,11 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
     ERC20 public flm;
 	ERC20 public fdtOg;
     uint256 maxUint256 = 2**256 - 1;
-    uint adminRewardLevel;
     bool public pidStatusForAdmin;
     bool public pidStatusForUser;
     bool public initRate;
     bool public initTeamRate;
+    bool public initFlmRate;
 	address public weth;
     address public receiveRemainingInvitationRewards;
     address public receiveRemainingTeamRewards;
@@ -1372,6 +1371,7 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
     uint256 public userBuyMax;
     uint256[] public inviteRate;
     uint256[] public teamRate;
+    uint256[] public flmRate;
     uint256 public buyId;
     uint256 public totalDonate;
     uint256[] public validNumbers =
@@ -1395,10 +1395,11 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
     mapping(address => uint256) public activeInviteAmount;
     mapping(address => uint256) public activeUsedAmount;
     mapping(address => mapping(uint256 => address)) public userTeamReward;
+    mapping(uint256 => uint256) public adminFlmReward;
     mapping(address => address) public userTeam;
     mapping(address =>mapping(address => bool)) public blackList;
 	AggregatorV3Interface internal priceFeed;
-    event allRecord(uint256 no,uint256 pid, string name,  address addr,uint256 ethAmount,uint256 usdtAmount,uint256 fdtAmount,uint256 time);
+    event allRecord(uint256 no,uint256 pid,   address addr,uint256 ethAmount,uint256 usdtAmount,uint256 fdtAmount,uint256 time);
     event allRegister(uint256 id, address _user);
     modifier onlyAdminTwo() {
         require(checkAddrForAdminLevelTwo(msg.sender), "Address is not an  level two administrator");
@@ -1436,7 +1437,6 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
         userBuyMax = 2000000000000000000;
         firePassport_ = _firePassport;
         registerId =1;
-        adminRewardLevel = 3;
         flmRatio = 10;
         receiveRemainingInvitationRewards = msg.sender;
         receiveRemainingTeamRewards = msg.sender;
@@ -1569,6 +1569,8 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
            if (recommender[_addr[i]] == address(0) &&  recommender[msg.sender] != _addr[i] && !isRecommender[_addr[i]]) {
              recommender[_addr[i]] = msg.sender;
              isRecommender[_addr[i]] = true;
+            adminsLevelFour.add(_addr[i]);
+
             userSetAdminsForFour[msg.sender].push( _addr[i]);
 
         }else{
@@ -1578,17 +1580,17 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
     }
 
     function removeAdminLevelTwo(address _addr) public onlyOwner{
-        require(checkAddrForAdminLevelTwo(_addr), "Address is not an  level two administrator");
+        // require(checkAddrForAdminLevelTwo(_addr), "Address is not an  level two administrator");
         adminsLevelTwo.remove(_addr);
     }
 
     function removeAdminLevelThree(address _addr) public onlyAdminTwo {
-        require(checkAddrForAdminLevelThree(_addr),"the address is not an level three administrator");
+        // require(checkAddrForAdminLevelThree(_addr),"the address is not an level three administrator");
         adminsLevelThree.remove(_addr);
         removeThree(msg.sender, _addr);
     }
     function removeAdminLevelFour(address _addr) public onlyadminThree{
-        require(checkAddrForAdminLevelFour(_addr),"the address is not an level four administrator");
+        // require(checkAddrForAdminLevelFour(_addr),"the address is not an level four administrator");
         adminsLevelFour.remove(_addr);
         removeFour(msg.sender,_addr);
     }
@@ -1642,13 +1644,13 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
         require(checkAddrForAdminLevelTwo(msg.sender) || checkAddrForAdminLevelThree(msg.sender),"You are not a level 2 or level 3 administrator");
         
         for(uint256 i = 0 ; i < _user.length ; i++){
-            require(checkAddrForActivateAccount(msg.sender) == false && isNotRegister[msg.sender] == true,"This account has a wallet address that has become an active account");
+            require(!checkAddrForActivateAccount(msg.sender) && isNotRegister[msg.sender] == true,"This account has a wallet address that has become an active account");
             activateAccount.add(_user[i]);
         }
     }
 
     function addAssignAddressAndRatio(address[] memory _addr, uint256[] memory _rate) public onlyOwner{
-        require(_addr.length == _rate.length, 'Please enter the correct address and ratio');
+        // require(_addr.length == _rate.length, 'Please enter the correct address and ratio');
         require(initRate, 'please initial addInviteRate()');
        
         for(uint i = 0 ; i < _addr.length; i++) {
@@ -1692,6 +1694,20 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
         });
 
     }
+    function addFlmRate(uint256[] memory _rate) public onlyOwner 
+    {
+        require(!initFlmRate,"If you have added modifications, please call the following method");
+        require(_rate.length == 5 , "input error");
+        for(uint256 i = 0 ;i < _rate.length; i++){
+            flmRate.push(_rate[i]);
+        }
+        initFlmRate = true;
+
+    }
+    function setAdminFlmReward(uint256 _id , uint256 _rate) public onlyOwner {
+        // require(_id <3 ,"id input error");
+        adminFlmReward[_id] = _rate;
+    }
     function addTeamRate(uint256[] memory _rate) public onlyOwner{
         require(!initTeamRate,"If you have added modifications, please call the following method");
         require(_rate.length ==3, "input error");
@@ -1720,7 +1736,6 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
         require(_id < inviteRate.length, 'input error');
         inviteRate[_id] = _rate;
         require(getRate() <= 100,"The rate must be within one hundred");
-
     }
 
     function getRate() public view returns(uint256){
@@ -1776,13 +1791,11 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
             revert("Please check and re-enter if the input is wrong");
         }
         userTeam[msg.sender] =_activationAddress;
-        userTeamReward[msg.sender][0] = userTeamReward[_activationAddress][0];
-        userTeamReward[msg.sender][1] = userTeamReward[_activationAddress][1];
-        userTeamReward[msg.sender][2] = userTeamReward[_activationAddress][2];
-
+        for(uint256 i = 0 ; i < 3 ; i++){
+        userTeamReward[msg.sender][i] = userTeamReward[_activationAddress][i];
+        }
         isNotRegister[msg.sender] = true;
         activeUsedAmount[_activationAddress] = activeUsedAmount[_activationAddress].add(1);
-
         emit allRegister(registerId,msg.sender);
         registerId++;
 
@@ -1799,21 +1812,13 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
         uint256 fdtAmount = fee.mul(getLatesPrice()).div(10**5 * salePrice);
         uint256 usdtAmount = fee.mul(getLatesPrice()).div(10**8);
         uint256 flmAmount = fdtAmount.mul(flmRatio).div(100);
-        for(uint i = 0 ; i < invitationLevel; i++){
+        for(uint i = 1 ; i < invitationLevel; i++){
         invite[0] = recommender[msg.sender];
-        invite[i+1] = recommender[invite[i]];
+        invite[i] = recommender[invite[i - 1]];
         }
-        // address invite1 = recommender[msg.sender];
-        // address invite2 =recommender[invite1];
-        // address invite3 =recommender[invite2];
-        // address invite4 =recommender[invite3];
-        // address invite5 =recommender[invite4];
-  
-
         require(fdtAmount <= getBalanceOfFDTOG(), "the contract FDT balance is not enough");
         require(userTotalBuy[msg.sender].add(fee) <= userBuyMax, "over limit");
         require(isValidNumber(fee), "invalid input");
-
                 require(msg.value == fee, "provide the correct amount of ETH");
                 IWETH(weth).deposit{value: fee}();
                 for (uint256 i = 0; i < assignAndRates.length; i++) {
@@ -1822,28 +1827,37 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
                     for(uint i = 0; i< invitationLevel;i++){
                     if(invite[i] == address(0)){
                     IWETH(weth).transfer(receiveRemainingInvitationRewards, fee.mul(inviteRate[i]).div(100));
+                    continue;
                     }
                     IWETH(weth).transfer(invite[i], fee.mul(inviteRate[i]).div(100));
+                    flm.transfer(invite[i],flmAmount.mul(flmRate[i]).div(100));
                     }
-                for(uint i= 0 ; i < adminRewardLevel;i ++){
-                    if(blackList[userTeamReward[msg.sender][2]][userTeamReward[msg.sender][1]] ){
-                IWETH(weth).transfer(userTeamReward[msg.sender][0], fee.mul(teamRate[0]).div(100));
-                IWETH(weth).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[1]).div(100));
-                IWETH(weth).transfer(userTeamReward[msg.sender][2], fee.mul(teamRate[2]).div(100));
+                    if(blackList[userTeamReward[msg.sender][2]][userTeamReward[msg.sender][1]] && blackList[userTeamReward[msg.sender][2]][userTeamReward[msg.sender][0]]){
+                        IWETH(weth).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[0].add(teamRate[1])).div(100));
+
+                    }else if(blackList[userTeamReward[msg.sender][2]][userTeamReward[msg.sender][1]] ){
+                        IWETH(weth).transfer(userTeamReward[msg.sender][0], fee.mul(teamRate[0]).div(100));
+                        IWETH(weth).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[1]).div(100));
+                        flm.transfer(userTeamReward[msg.sender][0], flmAmount.mul(adminFlmReward[0]).div(100));
+
                     }else if(blackList[userTeamReward[msg.sender][2]][userTeamReward[msg.sender][0]]){
-                IWETH(weth).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[0]).div(100));
-                IWETH(weth).transfer(userTeamReward[msg.sender][1], fee.mul(teamRate[1]).div(100));
-                IWETH(weth).transfer(userTeamReward[msg.sender][2], fee.mul(teamRate[2]).div(100));
-
+                        IWETH(weth).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[0]).div(100));
+                        IWETH(weth).transfer(userTeamReward[msg.sender][1], fee.mul(teamRate[1]).div(100));
+                        flm.transfer(userTeamReward[msg.sender][1], flmAmount.mul(adminFlmReward[1]).div(100));
+                    }else{
+                        for(uint i = 0 ; i < 2 ;i ++){
+                        IWETH(weth).transfer(userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(100));
+                        flm.transfer(userTeamReward[msg.sender][i], flmAmount.mul(adminFlmReward[i]).div(100));
+                        }
                     }
-
-                }
+                IWETH(weth).transfer(userTeamReward[msg.sender][2], fee.mul(teamRate[2]).div(100));
+                flm.transfer(userTeamReward[msg.sender][2], flmAmount.mul(adminFlmReward[2]).div(100));
         flm.transfer(msg.sender, flmAmount);
         fdtOg.transfer(msg.sender, fdtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);
        
-        emit allRecord(buyId, getPid(msg.sender), getName(msg.sender), msg.sender, fee, usdtAmount,  fdtAmount, block.timestamp);
+        emit allRecord(buyId, getPid(msg.sender),  msg.sender, fee, usdtAmount,  fdtAmount, block.timestamp);
         buyId++;
     }
 	function getLatesPrice() public view returns (uint256) {
@@ -1854,16 +1868,14 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
 			,
 			
 		) = priceFeed.latestRoundData();
-
 		return uint256(price);
 	}
-    function getName(address _user) public view returns(string memory){
-        if(IFirePassport(firePassport_).hasPID(_user)){
-
-        return IFirePassport(firePassport_).getUserInfo(_user).username;
-        }
-        return "anonymous";
-    }
+    // function getName(address _user) public view returns(string memory){
+    //     if(IFirePassport(firePassport_).hasPID(_user)){
+    //     return IFirePassport(firePassport_).getUserInfo(_user).username;
+    //     }
+    //     return "anonymous";
+    // }
     function getPid(address _user) public view returns(uint) {
         if(IFirePassport(firePassport_).hasPID(_user)){
         return IFirePassport(firePassport_).getUserInfo(_user).PID;
@@ -1876,32 +1888,18 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable {
 	function getBalanceOfFDTOG() public view returns(uint256) {
 		return fdtOg.balanceOf(address(this));
 	}
-
     function getInviteRate() public view returns(uint256) {
         return inviteRate.length;
     }
-
-  
     function getAssignAndRateslength() public view returns(uint256) {
         return assignAndRates.length;
     }
-
-
   function getAdminsLevelTwoList() public view returns(address[] memory) {
         return adminsLevelTwo.values();
     }
       function getAdminsLevelThreeList() public view returns(address[] memory) {
         return adminsLevelThree.values();
     }
-
-
-    function getAdminsLevelTwoLength() public view returns(uint256) {
-        return adminsLevelTwo.length();
-    }
-      function getAdminsLevelThreeLength() public view returns(uint256) {
-        return adminsLevelThree.length();
-    }
- 
     function getfdtOgAmount(uint256 fee) public view returns(uint256) {
 	return (fee*getLatesPrice()/10**5)/salePrice;
     }
