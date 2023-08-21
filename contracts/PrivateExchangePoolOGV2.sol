@@ -1478,7 +1478,7 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable ,ReentrancyGuard{
     mapping(address => address) public userTeam;
     mapping(address =>mapping(address => bool)) public blackList;
 	AggregatorV3Interface internal priceFeed;
-    event allRecord(address  recommender,uint256 no,uint256 salePrice ,  address addr,uint256 ethAmount,uint256 usdtAmount,uint256 fdtAmount,uint256 flmAmount,uint256 time);
+    event allRecord(address  recommender,uint256 no,uint256 divide ,uint256 salePrice ,  address addr,uint256 ethAmount,uint256 usdtAmount,uint256 fdtAmount,uint256 flmAmount,uint256 time);
     event allRegister(uint256 id,address recommenders, address _user);
     event blackUser(address operator, address user);
     modifier onlyAdminTwo() {
@@ -1729,6 +1729,9 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable ,ReentrancyGuard{
         for(uint256 i =0 ; i < _user.length ;i++) {
             require(!isNotRegister[_user[i]],"There is a registered address in this address");
             require(!checkAddrForActivateAccount(_user[i]), "Activate Account Settings Duplicate");
+            if( isRecommender[_user[i]]){
+                continue;
+            }
             activateAccount.add(_user[i]);
             recommender[_user[i]] = msg.sender;
             isRecommender[_user[i]] = true;
@@ -1884,7 +1887,7 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable ,ReentrancyGuard{
             registerId++;
             return;
         }
-        require(!isNotRegister[msg.sender], "your address is already registered");
+        require(!isNotRegister[msg.sender] && !isRecommender[msg.sender], "your address is already registered");
         if (recommender[msg.sender] != _activationAddress) {
             recommender[msg.sender] = _activationAddress;
             isRecommender[msg.sender] = true;
@@ -1959,8 +1962,7 @@ contract PrivateExchangePoolOgV2 is Ownable,Pausable ,ReentrancyGuard{
         fdtOg.transfer(msg.sender, fdtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);
-       
-        emit allRecord(recommender[msg.sender],buyId,salePrice_, msg.sender, fee, usdtAmount,  fdtAmount,flmAmount, block.timestamp);
+        emit allRecord(recommender[msg.sender],buyId,1,salePrice_, msg.sender, fee, usdtAmount,  fdtAmount,flmAmount, block.timestamp);
         buyId++;
     }
     function getActivateAccount() public view returns(address[] memory) {
