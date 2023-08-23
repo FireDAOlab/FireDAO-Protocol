@@ -1553,6 +1553,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
 		salePrice = 11;
         maxThree = 50;
         maxFour = 50;
+        maxFive = 50;
         activateAccountUsedAmount = 50;
         userBuyMax = 2000000000000000000;
         firePassport_ = _firePassport;
@@ -1787,8 +1788,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
         }
         return 0;
     }
-  function setActivateAccountForL2(address[] memory _user)public   {
-        require(checkAddrForAdminLevelTwo(msg.sender));
+  function setActivateAccountForL2(address[] memory _user)public  onlyAdminTwo {
         for(uint256 i = 0 ; i < _user.length ; i++){
             require(!checkAddrForActivateAccount(msg.sender) && isNotRegister[msg.sender] == true);
             activateAccount.add(_user[i]);
@@ -1848,7 +1848,6 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
 
     function setAssignAddressAndRatio(uint256 _id, address _addr,uint256 _rate) public onlyOwner{
         require(_id < assignAndRates.length);
-        require(checkRepeat(_addr), 'The added address is duplicated, please readjust and add again') ;
         assignAndRates[_id] = assignAndRate({
             assign: _addr,
             rate: _rate
@@ -1958,6 +1957,10 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
     }
     function donate(uint256 fee) external payable whenNotPaused  nonReentrant{
         require(isNotRegister[msg.sender]);
+        require(!checkAddrForAdminLevelFive(msg.sender) &&
+                !checkAddrForAdminLevelFour(msg.sender) &&
+                !checkAddrForAdminLevelThree(msg.sender) &&
+                !checkAddrForAdminLevelTwo(msg.sender));
         require(getRate() == 100);
         if (pidStatusForUser) {
             require(IFirePassport(firePassport_).hasPID(msg.sender));
@@ -2084,6 +2087,9 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
 	}
     function getAssignAndRateslength() public view returns(uint256) {
         return assignAndRates.length;
+    }
+    function getAdminsLevelTwoLength(address _adminTwo) public view returns(uint256 ) {
+        return setAdminLevelThree_[_adminTwo].length;
     }
      function getAdminsLevelThreeLength(address _adminThree) public view returns(uint256) {
         return setAdminLevelThree_[_adminThree].length;
