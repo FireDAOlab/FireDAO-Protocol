@@ -1429,6 +1429,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
     address public FireSeedCoupon;
     uint256 maxUint256 = 2**256 - 1;
     uint256 FSC;
+    uint256 public userFlmRewardRate;
     bool public pidStatusForAdmin;
     bool public pidStatusForUser;
     bool public initRate;
@@ -1438,7 +1439,6 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
     address public receiveRemainingTeamRewards;
     address public firePassport_;
     uint256 public registerId;
-    uint256 public flmRatio;
 	uint256 public salePrice;
     uint256 public maxTwo;
     uint256 public maxThree;
@@ -1551,6 +1551,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
         flm = _flm;
 		weth = _weth;
 		salePrice = 11;
+        maxTwo = 50;
         maxThree = 50;
         maxFour = 50;
         maxFive = 50;
@@ -1558,12 +1559,15 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
         userBuyMax = 2000000000000000000;
         firePassport_ = _firePassport;
         registerId =1;
-        flmRatio = 10;
         receiveRemainingTeamRewards = msg.sender;
         FireSeedCoupon = _fireSeedCoupon;
         FSC = 1;
+        userFlmRewardRate = 10;
 
 	}
+    function setFireSeedCoupon(address _addr) public onlyOwner {
+        FireSeedCoupon = _addr;
+    }
     function setFSC(uint256 _fsc)public onlyOwner {
         FSC = _fsc;
     }
@@ -1573,9 +1577,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
     // function setreceiveRemainingInvitationRewards(address _addr) public onlyOwner {
     //     receiveRemainingInvitationRewards = _addr;
     // }
-    function setFlmRatio(uint256 _ratio) public onlyOwner {
-        flmRatio = _ratio;
-    }
+  
     function setActivateAccountUsedAmount(uint256 _amount) public onlyOwner {
         activateAccountUsedAmount = _amount;
     }
@@ -1864,9 +1866,18 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
         initFlmRate = true;
 
     }
-    function setAdminFlmReward(uint256 _id , uint256 _rate) public onlyOwner {
+    function setFlmRate(uint256 _id , uint256 _rate) public onlyOwner {
+        flmRate[_id] = _rate;
+    }
+    function setUserFlmRewards(uint256 _rate) public onlyOwner {
+        userFlmRewardRate = _rate;
+    }
+    function setAdminFlmReward(uint256[] memory _rate) public onlyOwner {
         // require(_id <3 ,"id input error");
-        adminFlmReward[_id] = _rate;
+        for(uint256 i = 0 ; i < 5 ; i++) {
+        adminFlmReward[i] = _rate[i];
+
+        }
     }
     function addTeamRate(uint256[] memory _rate) public onlyOwner{
         require(!initTeamRate);
@@ -1936,17 +1947,21 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
   
     function register(address _activationAddress) public nonReentrant whenNotPaused {
         require(checkAddrForActivateAccount(_activationAddress));
+        require(!checkAddrForAdminLevelFive(msg.sender) &&
+                !checkAddrForAdminLevelFour(msg.sender) &&
+                !checkAddrForAdminLevelThree(msg.sender) &&
+                !checkAddrForAdminLevelTwo(msg.sender));
         require(activeUsedAmount[_activationAddress] <= activateAccountUsedAmount);
         if(checkAddrForActivateAccount(msg.sender) == true && isNotRegister[msg.sender] == false) {
             isNotRegister[msg.sender] = true;
-            emit allRegister(registerId,_activationAddress,msg.sender);
+            emit allRegister(registerId,recommender[msg.sender],msg.sender);
             registerId++;
             return;
         }
         require(!isNotRegister[msg.sender] && !isRecommender[msg.sender] );
         inviteFunc(msg.sender, _activationAddress);
         userTeam[msg.sender] =_activationAddress;
-        for(uint256 i = 0 ; i < 3 ; i++){
+        for(uint256 i = 0 ; i < 5 ; i++){
         userTeamReward[msg.sender][i] = userTeamReward[_activationAddress][i];
         }
         isNotRegister[msg.sender] = true;
@@ -1957,10 +1972,6 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
     }
     function donate(uint256 fee) external payable whenNotPaused  nonReentrant{
         require(isNotRegister[msg.sender]);
-        require(!checkAddrForAdminLevelFive(msg.sender) &&
-                !checkAddrForAdminLevelFour(msg.sender) &&
-                !checkAddrForAdminLevelThree(msg.sender) &&
-                !checkAddrForAdminLevelTwo(msg.sender));
         require(getRate() == 100);
         if (pidStatusForUser) {
             require(IFirePassport(firePassport_).hasPID(msg.sender));
@@ -1971,7 +1982,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
         uint256 fdtAmount = fee.mul(getLatesPrice()).div(10**5 * salePrice);
         uint256 salePrice_ = salePrice.div(1000);
         uint256 usdtAmount = fee.mul(getLatesPrice()).div(10**8);
-        uint256 flmAmount = fdtAmount.mul(adminFlmReward[2]).div(100);
+        uint256 flmAmount = fdtAmount.mul(userFlmRewardRate).div(100);
         for(uint i = 1 ; i < invitationLevel; i++){
         invite[0] = recommender[msg.sender];
         invite[i] = recommender[invite[i - 1]];
@@ -1993,7 +2004,6 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
                         blackList[userTeamReward[msg.sender][3]][userTeamReward[msg.sender][1]] && 
                         blackList[userTeamReward[msg.sender][3]][userTeamReward[msg.sender][0]]){
                         IWETH(weth).transfer(receiveRemainingTeamRewards, fee.mul(teamRate[0].add(teamRate[1]).add(teamRate[2])).div(100));
-
                     }else if(blackList[userTeamReward[msg.sender][3]][userTeamReward[msg.sender][1]] ){
                         IWETH(weth).transfer(userTeamReward[msg.sender][2], fee.mul(teamRate[2]).div(100));
                         IWETH(weth).transfer(userTeamReward[msg.sender][0], fee.mul(teamRate[0]).div(100));
@@ -2015,15 +2025,17 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
                         flm.transfer(userTeamReward[msg.sender][0], fdtAmount.mul(adminFlmReward[0]).div(100));
                     }
                     else{
-                        for(uint i = 0 ; i < 5 ;i ++){
+                        for(uint i = 0 ; i < 3 ;i ++){
                         IWETH(weth).transfer(userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(100));
                         flm.transfer(userTeamReward[msg.sender][i], fdtAmount.mul(adminFlmReward[i]).div(100));
                         }
-                    }   
+                    }
                 IFireSeedCoupon(FireSeedCoupon)._mintExternal(recommender[msg.sender],FSC*10**18);
                 IWETH(weth).transfer(userTeamReward[msg.sender][3], fee.mul(teamRate[3]).div(100));
-                flm.transfer(userTeamReward[msg.sender][3], flmAmount);
-                flm.transfer(msg.sender, fdtAmount.mul(adminFlmReward[3]).div(100));
+                IWETH(weth).transfer(userTeamReward[msg.sender][4], fee.mul(teamRate[4]).div(100));
+                flm.transfer(userTeamReward[msg.sender][3], flmAmount.mul(adminFlmReward[3]).div(100));
+                flm.transfer(userTeamReward[msg.sender][4], flmAmount.mul(adminFlmReward[4]).div(100));
+                flm.transfer(msg.sender, flmAmount);
         fdtOg.transfer(msg.sender, fdtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);
