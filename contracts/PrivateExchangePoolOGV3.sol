@@ -1529,6 +1529,10 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
             uint256 adminRate4,
             address addr
         );
+        event SetActive(
+            address _seter,
+            address _user
+        );
     event allRegister(uint256 id,address recommenders, address _user);
     event blackUser(address operator, address user);
     modifier onlyAdminTwo() {
@@ -1799,6 +1803,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
         for(uint256 i = 0 ; i < _user.length ; i++){
             require(!checkAddrForActivateAccount(_user[i]) && isNotRegister[_user[i]] == true);
             activateAccount.add(_user[i]);
+            emit SetActive(msg.sender, _user[i]);
         }
     }
     function setActivateAccountForL5(address[] memory  _user) public onlyAdminFive{
@@ -1814,7 +1819,8 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
             userTeamReward[_user[i]][2] = recommender[recommender[msg.sender]];
             userTeamReward[_user[i]][3] = recommender[recommender[recommender[msg.sender]]];
             userTeamReward[_user[i]][4] = recommender[recommender[recommender[recommender[msg.sender]]]];
-            emit allRegister(0, msg.sender, _user[i]);
+            emit SetActive(msg.sender, _user[i]);
+
         }
     }
   
@@ -2073,9 +2079,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
             );
         buyId++;
     }
-    function getActivateAccount() public view returns(address[] memory) {
-        return activateAccount.values();
-    }
+
 	function getLatesPrice() public view returns (uint256) {
 		(
 			,
