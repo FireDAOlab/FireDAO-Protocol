@@ -1508,6 +1508,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
     );
     event allRecord(
         uint256 no,
+        uint256 fscAmount,
         uint256 salePrice,
         address recommender,
         address addr,
@@ -1561,8 +1562,8 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
         * mumbai test net address: 0x0715A7794a1dc8e42615F059dD6e406A6594651A
 	*/
 	constructor(ERC20 _fdtOg,ERC20 _flm,address _fireSeedCoupon,  address _weth, address _firePassport) {
-		// priceFeed = AggregatorV3Interface(0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612);//arb one 
-		priceFeed = AggregatorV3Interface(0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08);//arb goerli
+		priceFeed = AggregatorV3Interface(0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612);//arb one 
+		// priceFeed = AggregatorV3Interface(0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08);//arb goerli
 		// priceFeed = AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A);//mumbai
 		fdtOg = _fdtOg;
         flm = _flm;
@@ -1820,7 +1821,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
             userTeamReward[_user[i]][3] = recommender[recommender[recommender[msg.sender]]];
             userTeamReward[_user[i]][4] = recommender[recommender[recommender[recommender[msg.sender]]]];
             emit SetActive(msg.sender, _user[i]);
-
+            emit allRegister(0, msg.sender, _user[i]);
         }
     }
   
@@ -2030,6 +2031,7 @@ contract PrivateExchangePoolOgV3 is Ownable,Pausable ,ReentrancyGuard{
         totalDonate = totalDonate.add(fee);
             emit allRecord(
             buyId,
+            FSC,
             salePrice,
             recommender[msg.sender],
             msg.sender,
