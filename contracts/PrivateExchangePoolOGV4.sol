@@ -1938,7 +1938,7 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
     }
      function setActivateAccountForL2(address[] memory _user) public  onlyAdminTwo {
         for(uint256 i = 0 ; i < _user.length ; i++){
-            require(!checkAddrForActivateAccount(msg.sender) && isNotRegister[msg.sender] == true);
+            require(!checkAddrForActivateAccount(_user[i]) && isNotRegister[_user[i]] == true);
             activateAccount.add(_user[i]);
         }
     }
@@ -1950,15 +1950,6 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
             activateAccount.add(_user[i]);
             inviteFunc(_user[i],msg.sender);
             activeInviteAmount[msg.sender] = activeInviteAmount[msg.sender].add(1);
-            // userTeamReward[_user[i]][0] = msg.sender; //9
-            // userTeamReward[_user[i]][1] = recommender[msg.sender];//8
-            // userTeamReward[_user[i]][2] = recommender[recommender[msg.sender]];//7
-            // userTeamReward[_user[i]][3] = recommender[recommender[recommender[msg.sender]]];//6
-            // userTeamReward[_user[i]][4] = recommender[recommender[recommender[recommender[msg.sender]]]];//5
-            // userTeamReward[_user[i]][5] = recommender[recommender[recommender[recommender[recommender[msg.sender]]]]];//4
-            // userTeamReward[_user[i]][6] = recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]];//3
-            // userTeamReward[_user[i]][7] = recommender[recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]]];//2
-            // userTeamReward[_user[i]][8] = recommender[recommender[recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]]]];//1
             for(uint256 j = 1 ; j < 9 ; j ++){
                 userTeamReward[_user[i]][0] = msg.sender; 
                 userTeamReward[_user[i]][j] = recommender[userTeamReward[_user[i]][j - 1 ]];
@@ -2128,6 +2119,11 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
                     IWETH(weth).transfer(assignAndRates[i].assign, fee.mul(assignAndRates[i].rate).div(10000));
                     }
                     for(uint i = 0; i< invitationLevel;i++){
+                        if(checkAddrForAdminLevelNine(invite[i])){
+                        IWETH(weth).transfer(receiveRemainingTeamRewards, fee.mul(inviteRate[i]).div(10000));
+                        flm.transfer(receiveRemainingTeamRewards,fdtAmount.mul(flmRate[i]).div(10000));
+                        continue;
+                        }
                     IWETH(weth).transfer(invite[i], fee.mul(inviteRate[i]).div(10000));
                     flm.transfer(invite[i],fdtAmount.mul(flmRate[i]).div(10000));
                     }
