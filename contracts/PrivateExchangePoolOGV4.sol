@@ -1412,7 +1412,16 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
 
     using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
-
+enum  AdminLevel {
+    LevelTwo,
+    LevelThree,
+    LevelFour,
+    LevelFive,
+    LevelSix,
+    LevelSeven,
+    LevelEight,
+    LevelNine
+}
   uint256 constant private invitationLevel = 5;
     struct assignAndRate {
         address assign;
@@ -1444,14 +1453,6 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
     address public firePassport_;
     uint256 public registerId;
 	uint256 public salePrice;
-    uint256 public maxTwo;
-    uint256 public maxThree;
-    uint256 public maxFour;
-    uint256 public maxFive;
-    uint256 public maxSix;
-    uint256 public maxSeven;
-    uint256 public maxEight;
-    uint256 public maxNine;
     uint256 public activateAccountUsedAmount;
     uint256 public userBuyMax;
     uint256[] public inviteRate;
@@ -1476,21 +1477,19 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
 	mapping(address => uint256) public userTotalBuy;
     mapping(address => bool) public isRecommender;
     mapping(address => address) public recommender;
-    mapping(address => address[]) public setAdminLevelTwo_;
-    mapping(address => address[]) public setAdminLevelThree_;
-    mapping(address => address[]) public setAdminLevelFour_;
-    mapping(address => address[]) public setAdminLevelFive_;
-    mapping(address => address[]) public setAdminLevelSix_;
-    mapping(address => address[]) public setAdminLevelSeven_;
-    mapping(address => address[]) public setAdminLevelEight_;
-    mapping(address => address[]) public setAdminLevelNine_;
+    mapping(address => mapping(AdminLevel => address[])) public setAdminLevel_;
+    mapping(address => AdminLevel) public userLevels;
     mapping(address => bool) public isNotRegister;
     mapping(address => uint256) public activeInviteAmount;
     mapping(address => uint256) public activeUsedAmount;
     mapping(address => mapping(uint256 => address)) public userTeamReward;
     mapping(uint256 => uint256) public adminFlmReward;
-    mapping(address => address) public userTeam;
     mapping(address =>mapping(address => bool)) public blackList;
+    mapping(address => bool) public isNotAdmin;
+    mapping(uint8 => uint256) public maxLevels;
+    mapping(AdminLevel => EnumerableSet.AddressSet) private adminLevelToSet;
+
+
 	AggregatorV3Interface internal priceFeed;
     event allFlmRate(
         uint256 flmRate4,
@@ -1498,6 +1497,14 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
         uint256 flmRate2,
         uint256 flmRate1,
         uint256 flmRate0,
+  
+        address user
+    );
+    event allFlmRateForAdmin(
+              uint256 adminFlmRate8,
+        uint256 adminFlmRate7,
+        uint256 adminFlmRate6,
+        uint256 adminFlmRate5,
         uint256 adminFlmRate4,
         uint256 adminFlmRate3,
         uint256 adminFlmRate2,
@@ -1529,57 +1536,43 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
         uint256 fdtAmount,
         uint256 flmAmount
         );
-        event allTeamRate(
+        event allTeamAddr(
             address admin0,
             address admin1,
             address admin2,
             address admin3,
             address admin4,
+            address admin5,
+            address admin6,
+            address admin7,
+            address admin8,
+            address addr
+           
+        );
+        event allTeamRate(
             uint256 adminRate0,
             uint256 adminRate1,
             uint256 adminRate2,
             uint256 adminRate3,
             uint256 adminRate4,
+            uint256 adminRate5,
+            uint256 adminRate6,
+            uint256 adminRate7,
+            uint256 adminRate8,
             address addr
         );
+
         event SetActive(
             address _seter,
             address _user
         );
     event allRegister(uint256 id,address recommenders, address _user);
     event blackUser(address operator, address user);
-    modifier onlyAdminTwo() {
-        require(checkAddrForAdminLevelTwo(msg.sender));
-        _;
+    modifier onlyAdmin(AdminLevel _level) {
+    require(checkAdminLevel(_level, msg.sender), "Not authorized");
+    _;
     }
-    modifier onlyAdminThree() {
-        require(checkAddrForAdminLevelThree(msg.sender));
-        _;
-    }
-    modifier onlyAdminFour() {
-        require(checkAddrForAdminLevelFour(msg.sender));
-        _;
-    }
-    modifier onlyAdminFive() {
-        require(checkAddrForAdminLevelFive(msg.sender));
-        _;
-    }
-    modifier onlyAdminSix(){
-        require(checkAddrForAdminLevelSix(msg.sender));
-        _;
-    }
-    modifier onlyAdminSeven(){
-        require(checkAddrForAdminLevelSeven(msg.sender));
-        _;
-    }
-    modifier onlyAdminEight(){
-        require(checkAddrForAdminLevelEight(msg.sender));
-        _;
-    }
-    modifier onlyAdminNine(){
-        require(checkAddrForAdminLevelNine(msg.sender));
-        _;
-    }
+ 
 	/**
 		* NetWork: Goerli
 		* Aggregator: ETH/USD
@@ -1590,21 +1583,22 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
         * mumbai test net address: 0x0715A7794a1dc8e42615F059dD6e406A6594651A
 	*/
 	constructor(ERC20 _fdtOg,ERC20 _flm,address _fireSeedCoupon,  address _weth, address _firePassport) {
-		priceFeed = AggregatorV3Interface(0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612);//arb one 
-		// priceFeed = AggregatorV3Interface(0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08);//arb goerli
+		// priceFeed = AggregatorV3Interface(0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612);//arb one 
+		priceFeed = AggregatorV3Interface(0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08);//arb goerli
 		// priceFeed = AggregatorV3Interface(0x0715A7794a1dc8e42615F059dD6e406A6594651A);//mumbai
 		fdtOg = _fdtOg;
         flm = _flm;
 		weth = _weth;
 		salePrice = 11;
-        maxTwo = 50;
-        maxThree = 50;
-        maxFour = 50;
-        maxFive = 50;
-        maxSix = 50;
-        maxSeven = 50;
-        maxEight = 50;
-        maxNine = 50;
+        maxLevels[1] = 50;
+        maxLevels[2] = 50;
+        maxLevels[3] = 50;
+        maxLevels[4] = 50;
+        maxLevels[5] = 50;
+        maxLevels[6] = 50;
+        maxLevels[7] = 50;
+        maxLevels[8] = 50;
+        maxLevels[9] = 50;
         activateAccountUsedAmount = 50;
         userBuyMax = 2000000000000000000;
         firePassport_ = _firePassport;
@@ -1658,91 +1652,60 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
 	function setSalePrice(uint256 _salePrice) public onlyOwner {
 		salePrice = _salePrice;
 	}
-    function setAdminForTwo(uint256 _max) public onlyOwner {
+    function setAdminForMAX(uint8 _level,uint256 _max) public onlyOwner {
         if(_max == 0) {
-        maxTwo = maxUint256;
+        maxLevels[_level] = maxUint256;
         return;
         }
-        maxTwo = _max;
+        maxLevels[_level] = _max;
     }
-    function setAdminForThree(uint256 _max) public onlyOwner {
-        if(_max == 0) {
-        maxThree = maxUint256;
-        return;
-        }
-        maxThree = _max;
-    }
-    function setAdminForFour(uint256 _max) public onlyOwner {
-        if(_max == 0) {
-        maxFour = maxUint256;
-        return;
-        }
-        maxFour = _max;
-    }
-    function setAdminForFive(uint256 _max) public onlyOwner {
-        if(_max ==  0) {
-            maxFive = maxUint256;
-            return;
-        }
-        maxFive = _max;
-    }
-    function setAdminForSix(uint256 _max) public onlyOwner {
-        if(_max ==  0) {
-            maxSix = maxUint256;
-            return;
-        }
-        maxSix = _max;
-    }
-    function setAdminForSeven(uint256 _max) public onlyOwner {
-        if(_max == 0) {
-            maxSeven = maxUint256;
-            return;
-        }
-        maxSeven = _max;
-    }
-    function setAdminForEight(uint256 _max) public onlyOwner {
-        if(_max == 0){
-            maxEight = maxUint256;
-            return;
-        }
-        maxEight = _max;
-    }
-    function setAdminForNine(uint256 _max) public onlyOwner {
-        if(_max ==0) {
-            maxNine = maxUint256;
-            return;
-        }
-        maxNine = _max;
+    function getAdminLevelList(address _admin) public view returns(address[] memory) {
+        return  setAdminLevel_[_admin][userLevels[_admin]];
     }
     function checkAddrForActivateAccount(address _user) public view returns(bool) {
         return activateAccount.contains(_user);
     }
     function checkAddrForAdminLevelTwo(address _user) public view returns(bool) {
-        return adminsLevelTwo.contains(_user);
+        return checkAdminLevel(AdminLevel.LevelTwo, _user);
     }
     function checkAddrForAdminLevelThree(address _user) public view returns(bool){
-        return adminsLevelThree.contains(_user);
+        return checkAdminLevel(AdminLevel.LevelThree, _user);
     }
     function checkAddrForAdminLevelFour(address _user) public view returns(bool){
-        return adminsLevelFour.contains(_user);
+        return checkAdminLevel(AdminLevel.LevelFour, _user);
+
     }
     function checkAddrForAdminLevelFive(address _user) public view returns(bool){
-        return adminsLevelFive.contains(_user);
+        return checkAdminLevel(AdminLevel.LevelFive, _user);
+
     }
       function checkAddrForAdminLevelSix(address _user) public view returns(bool){
-        return adminsLevelSix.contains(_user);
+        return checkAdminLevel(AdminLevel.LevelSix, _user);
     }
     function checkAddrForAdminLevelSeven(address _user) public view returns(bool){
-        return adminsLevelSeven.contains(_user);
+        return checkAdminLevel(AdminLevel.LevelSeven, _user);
+
     }
     function checkAddrForAdminLevelEight(address _user) public view returns(bool){
-        return adminsLevelEight.contains(_user);
+        return checkAdminLevel(AdminLevel.LevelEight, _user);
+
     }
     function checkAddrForAdminLevelNine(address _user) public view returns(bool){
-        return adminsLevelNine.contains(_user);
+        return checkAdminLevel(AdminLevel.LevelNine, _user);
+
     }
-    function setBlackList(address _user) public onlyAdminTwo{
-        require(msg.sender == recommender[_user] || msg.sender == recommender[recommender[_user]] ||msg.sender == recommender[recommender[recommender[_user]]] );
+    function checkTeamUser(address _user) public view returns(bool) {
+        address team = recommender[_user];
+        for(uint256 i = 0 ;i < 9 ;i++){
+            if(msg.sender == team){
+                return true;
+            }
+            team = recommender[team];
+        }
+        return false;
+    }
+    function setBlackList(address _user) public onlyAdmin(AdminLevel.LevelTwo) {
+        require(checkTeamUser(_user));
         blackList[msg.sender][_user] = !blackList[msg.sender][_user];
         emit blackUser(msg.sender,_user );
     }
@@ -1754,243 +1717,120 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
             revert();
              }
     }
+    function checkAdminLevel(AdminLevel _level, address _user) public view returns (bool) {
+    return adminLevelToSet[_level].contains(_user);
+    }
+function setAdmin(AdminLevel _level, address[] memory _addr) internal {
+    require(setAdminLevel_[msg.sender][_level].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
+    for (uint256 i = 0; i < _addr.length; i++) {
+        if (pidStatusForAdmin) {
+            require(IFirePassport(firePassport_).hasPID(_addr[i]));
+        }
+        require(msg.sender != _addr[i]);
+        require(!isNotRegister[_addr[i]]);
+        require(!adminLevelToSet[_level].contains(_addr[i])); 
+        inviteFunc(_addr[i], msg.sender);
+        adminLevelToSet[_level].add(_addr[i]); 
+        setAdminLevel_[msg.sender][_level].push(_addr[i]);
+        isNotAdmin[_addr[i]] = true;
+        userLevels[msg.sender] = _level;
+        emit allRegister(0, msg.sender, _addr[i]);
+    }
+}
 
     function setAdminLevelTwo(address[] memory _addr) public onlyOwner{
-        for(uint i = 0; i < _addr.length;i++){
-            if(pidStatusForAdmin){
-                require(IFirePassport(firePassport_).hasPID(_addr[i]));
-            }
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelTwo(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelTwo.add(_addr[i]);
-            setAdminLevelTwo_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
+      setAdmin(AdminLevel.LevelTwo, _addr);
     }
 
-    function setAdminLevelThree(address[] memory _addr) public onlyAdminTwo {
-        require(setAdminLevelThree_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint256 i = 0; i < _addr.length; i++){
-            if(pidStatusForAdmin){
-                require(IFirePassport(firePassport_).hasPID(_addr[i]));
-            }
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelThree(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelThree.add(_addr[i]);
-            setAdminLevelThree_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-            
-        }
+    function setAdminLevelThree(address[] memory _addr) public onlyAdmin(AdminLevel.LevelTwo) {
+     setAdmin(AdminLevel.LevelThree, _addr);
     }
-      function setAdminLevelFour(address[] memory _addr) public onlyAdminThree{
-        require(setAdminLevelFour_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-            if(pidStatusForUser){
-                require(IFirePassport(firePassport_).hasPID(_addr[i]));
-            }
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);    
-            require(!checkAddrForAdminLevelFour(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelFour.add(_addr[i]);
-           setAdminLevelFour_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-
-        }
+    function setAdminLevelFour(address[] memory _addr) public onlyAdmin(AdminLevel.LevelThree){
+     setAdmin(AdminLevel.LevelFour, _addr);
     }
-    function setAdminLevelFive(address[] memory _addr) public onlyAdminFour {
-        require(setAdminLevelFive_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-            if(pidStatusForUser){
-                require(IFirePassport(firePassport_).hasPID(_addr[i]));
-            }
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);    
-            require(!checkAddrForAdminLevelFive(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelFive.add(_addr[i]);
-            setAdminLevelFive_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
+    function setAdminLevelFive(address[] memory _addr) public onlyAdmin(AdminLevel.LevelFour) {
+     setAdmin(AdminLevel.LevelFive, _addr);
     }
-     function setAdminLevelSix(address[] memory _addr) public onlyAdminFive {
-        require(setAdminLevelSix_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-             if(pidStatusForAdmin){
-                require(IFirePassport(firePassport_).hasPID(_addr[i]));
-            }
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelSix(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelSix.add(_addr[i]);
-            setAdminLevelSix_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
-    }
-   function setAdminLevelSeven(address[] memory _addr) public onlyAdminSix {
-        require(setAdminLevelSeven_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-             if(pidStatusForAdmin){
-                require(IFirePassport(firePassport_).hasPID(_addr[i]));
-            }
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelSeven(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelSeven.add(_addr[i]);
-            setAdminLevelSeven_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
-    }
-       function setAdminLevelEight(address[] memory _addr) public onlyAdminSeven {
-        require(setAdminLevelEight_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-             if(pidStatusForAdmin){
-                require(IFirePassport(firePassport_).hasPID(_addr[i]));
-            }
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelEight(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelEight.add(_addr[i]);
-            setAdminLevelEight_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
-    }
-    function setAdminLevelNine(address[] memory _addr) public onlyAdminEight {
-        require(setAdminLevelNine_[msg.sender].length < getMax(msg.sender) && _addr.length < getMax(msg.sender));
-        for(uint i=0;i<_addr.length;i++){
-             if(pidStatusForAdmin){
-                require(IFirePassport(firePassport_).hasPID(_addr[i]));
-            }
-            require(msg.sender != _addr[i]);
-            require(!isNotRegister[_addr[i]]);
-            require(!checkAddrForAdminLevelNine(_addr[i]));
-            inviteFunc(_addr[i],msg.sender);
-            adminsLevelNine.add(_addr[i]);
-            setAdminLevelNine_[msg.sender].push(_addr[i]);
-            emit allRegister(0, msg.sender, _addr[i]);
-        }
-    }
-
-    function removeAdminLevelTwo(address _addr) public onlyOwner{
-        adminsLevelTwo.remove(_addr);
-        for(uint256 i = 0 ; i < setAdminLevelTwo_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelTwo_[msg.sender][i]){
-                setAdminLevelTwo_[msg.sender][i] = setAdminLevelTwo_[msg.sender][setAdminLevelTwo_[msg.sender].length - 1];
-                setAdminLevelTwo_[msg.sender].pop();
-                return;
-            }
-        }
-    }
-    function removeAdminLevelThree(address _addr) public onlyAdminTwo {
-        adminsLevelThree.remove(_addr);
-          for(uint256 i = 0 ; i < setAdminLevelThree_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelThree_[msg.sender][i]){
-                setAdminLevelThree_[msg.sender][i] = setAdminLevelThree_[msg.sender][setAdminLevelThree_[msg.sender].length - 1];
-                setAdminLevelThree_[msg.sender].pop();
-                return;
-            }
-        }
-    }
-    function removeAdminLevelFour(address _addr) public onlyAdminThree{
-        adminsLevelFour.remove(_addr);
-          for(uint256 i = 0 ; i < setAdminLevelFour_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelFour_[msg.sender][i]){
-                setAdminLevelFour_[msg.sender][i] = setAdminLevelFour_[msg.sender][setAdminLevelFour_[msg.sender].length - 1];
-                setAdminLevelFour_[msg.sender].pop();
-                return;
-            }
-        }
-    }
-    function removeAdminLevelFive(address _addr) public onlyAdminFour{
-        adminsLevelFive.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelFour_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelFive_[msg.sender][i]){
-                setAdminLevelFour_[msg.sender][i] = setAdminLevelFour_[msg.sender][setAdminLevelFour_[msg.sender].length - 1];
-                setAdminLevelFour_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    } 
-    function removeAdminLevelSix(address _addr) public onlyAdminFive{
-            adminsLevelSix.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelSix_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelSix_[msg.sender][i]){
-                setAdminLevelSix_[msg.sender][i] = setAdminLevelSix_[msg.sender][setAdminLevelSix_[msg.sender].length - 1];
-                setAdminLevelSix_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    }  
-    function removeAdminLevelSeven(address _addr) public onlyAdminSix{
-            adminsLevelSeven.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelSeven_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelSeven_[msg.sender][i]){
-                setAdminLevelSeven_[msg.sender][i] = setAdminLevelSeven_[msg.sender][setAdminLevelSeven_[msg.sender].length - 1];
-                setAdminLevelSeven_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    }  
-    function removeAdminLevelEight(address _addr) public onlyAdminSeven{
-            adminsLevelEight.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelEight_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelEight_[msg.sender][i]){
-                setAdminLevelEight_[msg.sender][i] = setAdminLevelEight_[msg.sender][setAdminLevelEight_[msg.sender].length - 1];
-                setAdminLevelEight_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    }  
-    function removeAdminLevelNine(address _addr) public onlyAdminEight{
-            adminsLevelNine.remove(_addr);
-               for(uint256 i = 0 ; i < setAdminLevelNine_[msg.sender].length; i ++) {
-            if(_addr == setAdminLevelNine_[msg.sender][i]){
-                setAdminLevelNine_[msg.sender][i] = setAdminLevelNine_[msg.sender][setAdminLevelNine_[msg.sender].length - 1];
-                setAdminLevelNine_[msg.sender].pop();
-                return;
-            }
-        }
-           
-    }
+     function setAdminLevelSix(address[] memory _addr) public onlyAdmin(AdminLevel.LevelFive)  {
+     setAdmin(AdminLevel.LevelSix, _addr);
     
-    function getMax(address _user) internal view returns(uint256) {
-        if(checkAddrForAdminLevelTwo(_user)){
-            return maxTwo;
-        }else if(checkAddrForAdminLevelThree(_user)) {
-            return maxThree;
-        }else if(checkAddrForAdminLevelFour(_user)){
-            return maxFour;
-        }else if(checkAddrForAdminLevelFive(_user)){
-            return maxFive;
-        }else if(checkAddrForAdminLevelSix(_user)){
-            return maxSix;
-        }else if(checkAddrForAdminLevelSeven(_user)){
-            return maxSeven;
-        }else if(checkAddrForAdminLevelEight(_user)){
-            return maxEight;
-        }else if(checkAddrForAdminLevelNine(_user)){
-            return maxNine;
-        }
-        return 0;
     }
-     function setActivateAccountForL2(address[] memory _user) public  onlyAdminTwo {
+   function setAdminLevelSeven(address[] memory _addr) public onlyAdmin(AdminLevel.LevelSix)  {
+     setAdmin(AdminLevel.LevelSeven, _addr);
+      
+    }
+       function setAdminLevelEight(address[] memory _addr) public onlyAdmin(AdminLevel.LevelSeven)  {
+     setAdmin(AdminLevel.LevelEight, _addr);
+  
+    }
+
+    function setAdminLevelNine(address[] memory _addr) public  onlyAdmin(AdminLevel.LevelEight) {
+     setAdmin(AdminLevel.LevelNine, _addr);
+    }
+
+function removeAdmin(AdminLevel _level, address _addr)  internal{
+    require(adminLevelToSet[_level].contains(_addr), "Address not found in admin level");
+    adminLevelToSet[_level].remove(_addr);
+    delete userLevels[_addr];
+
+    address[] storage adminList = setAdminLevel_[msg.sender][_level];
+    for (uint256 i = 0; i < adminList.length; i++) {
+        if (_addr == adminList[i]) {
+            adminList[i] = adminList[adminList.length - 1];
+            adminList.pop();
+            return;
+        }
+    }
+}
+
+
+    function removeAdminLevelTwo(address _addr) public onlyOwner {
+        removeAdmin(AdminLevel.LevelTwo, _addr);
+    }
+    function removeAdminLevelThree(address _addr) public onlyAdmin(AdminLevel.LevelTwo) {
+        removeAdmin(AdminLevel.LevelThree, _addr);
+    }
+    function removeAdminLevelFour(address _addr) public onlyAdmin(AdminLevel.LevelThree){
+         removeAdmin(AdminLevel.LevelFour, _addr);
+    }
+    function removeAdminLevelFive(address _addr) public onlyAdmin(AdminLevel.LevelFour){
+         removeAdmin(AdminLevel.LevelFive, _addr);
+    } 
+    function removeAdminLevelSix(address _addr) public onlyAdmin(AdminLevel.LevelFive){
+         removeAdmin(AdminLevel.LevelSix, _addr);
+    }  
+    function removeAdminLevelSeven(address _addr) public onlyAdmin(AdminLevel.LevelSix){
+         removeAdmin(AdminLevel.LevelSeven, _addr);
+    }  
+    function removeAdminLevelEight(address _addr) public onlyAdmin(AdminLevel.LevelSeven){
+         removeAdmin(AdminLevel.LevelEight, _addr);
+    }  
+    function removeAdminLevelNine(address _addr) public onlyAdmin(AdminLevel.LevelEight){
+         removeAdmin(AdminLevel.LevelNine, _addr);
+    }
+    function getUserLevel(address _user) internal view returns (uint8) {
+    if (_user == owner()) return 1;
+    if (checkAddrForAdminLevelTwo(_user)) return 2;
+    if (checkAddrForAdminLevelThree(_user)) return 3;
+    if (checkAddrForAdminLevelFour(_user)) return 4;
+    if (checkAddrForAdminLevelFive(_user)) return 5;
+    if (checkAddrForAdminLevelSix(_user)) return 6;
+    if (checkAddrForAdminLevelSeven(_user)) return 7;
+    if (checkAddrForAdminLevelEight(_user)) return 8;
+    if (checkAddrForAdminLevelNine(_user)) return 9;
+    return 0;
+}
+    function getMax(address _user) internal view returns(uint256) {
+    uint8 userLevel = getUserLevel(_user);
+    return maxLevels[userLevel];
+    }
+     function setActivateAccountForL2(address[] memory _user) public  onlyAdmin(AdminLevel.LevelTwo) {
         for(uint256 i = 0 ; i < _user.length ; i++){
             require(!checkAddrForActivateAccount(_user[i]) && isNotRegister[_user[i]] == true);
             activateAccount.add(_user[i]);
         }
     }
-    function setActivateAccountForL9(address[] memory  _user) public onlyAdminNine{
+    function setActivateAccountForL9(address[] memory  _user) public onlyAdmin(AdminLevel.LevelNine){
     require(activeInviteAmount[msg.sender] <= getMax(msg.sender) && _user.length < getMax(msg.sender));
         for(uint256 i =0 ; i < _user.length ;i++) {
             require(!isNotRegister[_user[i]]);
@@ -1998,15 +1838,6 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
             activateAccount.add(_user[i]);
             inviteFunc(_user[i],msg.sender);
             activeInviteAmount[msg.sender] = activeInviteAmount[msg.sender].add(1);
-            // userTeamReward[_user[i]][0] = msg.sender; //9
-            // userTeamReward[_user[i]][1] = recommender[msg.sender];//8
-            // userTeamReward[_user[i]][2] = recommender[recommender[msg.sender]];//7
-            // userTeamReward[_user[i]][3] = recommender[recommender[recommender[msg.sender]]];//6
-            // userTeamReward[_user[i]][4] = recommender[recommender[recommender[recommender[msg.sender]]]];//5
-            // userTeamReward[_user[i]][5] = recommender[recommender[recommender[recommender[recommender[msg.sender]]]]];//4
-            // userTeamReward[_user[i]][6] = recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]];//3
-            // userTeamReward[_user[i]][7] = recommender[recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]]];//2
-            // userTeamReward[_user[i]][8] = recommender[recommender[recommender[recommender[recommender[recommender[recommender[recommender[msg.sender]]]]]]]];//1
             for(uint256 j = 1 ; j < 9 ; j ++){
                 userTeamReward[_user[i]][0] = msg.sender; 
                 userTeamReward[_user[i]][j] = recommender[userTeamReward[_user[i]][j - 1 ]];
@@ -2078,7 +1909,7 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
     }
     function addTeamRate(uint256[] memory _rate) public onlyOwner{
         require(!initTeamRate);
-        require(_rate.length ==5);
+        require(_rate.length ==9);
         for(uint256 i = 0 ;i < _rate.length; i++){
             teamRate.push(_rate[i]);
         }
@@ -2091,7 +1922,7 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
     function addInviteRate(uint256[] memory _rate) public onlyOwner{
         require(!initRate);
         require(_rate.length == 5 || inviteRate.length < 5 );
-        for(uint256 i = 0; i < _rate.length; i++) {
+        for(uint256 i = 0; i < _rate.length; i++)` {
             inviteRate.push(_rate[i]);
         }
         initRate = true;
@@ -2127,10 +1958,7 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
     }
     function register(address _activationAddress) public nonReentrant whenNotPaused {
         require(checkAddrForActivateAccount(_activationAddress));
-        require(!checkAddrForAdminLevelFive(msg.sender) &&
-                !checkAddrForAdminLevelFour(msg.sender) &&
-                !checkAddrForAdminLevelThree(msg.sender) &&
-                !checkAddrForAdminLevelTwo(msg.sender));
+        require(!isNotAdmin[msg.sender]);
         require(activeUsedAmount[_activationAddress] <= activateAccountUsedAmount);
         if(checkAddrForActivateAccount(msg.sender) == true && isNotRegister[msg.sender] == false) {
             isNotRegister[msg.sender] = true;
@@ -2140,8 +1968,7 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
         }
         require(!isNotRegister[msg.sender] && !isRecommender[msg.sender] );
         inviteFunc(msg.sender, _activationAddress);
-        userTeam[msg.sender] =_activationAddress;
-        for(uint256 i = 0 ; i < 5 ; i++){
+        for(uint256 i = 0 ; i < 9 ; i++){
         userTeamReward[msg.sender][i] = userTeamReward[_activationAddress][i];
         }
         isNotRegister[msg.sender] = true;
@@ -2150,7 +1977,7 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
         registerId++;
 
     }
-    function donate(uint256 fee) external payable whenNotPaused  nonReentrant{
+    function donate(uint256 fee) external payable whenNotPaused nonReentrant{
         require(isNotRegister[msg.sender]);
         require(getRate() == 10000);
         if (pidStatusForUser) {
@@ -2218,6 +2045,14 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
             flmRate[2],
             flmRate[1],
             flmRate[0],
+       
+            msg.sender
+            );
+            emit allFlmRateForAdmin(
+            adminFlmReward[8],
+            adminFlmReward[7],
+            adminFlmReward[6],
+            adminFlmReward[5],
             adminFlmReward[4],
             adminFlmReward[3],
             adminFlmReward[2],
@@ -2238,12 +2073,23 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
             inviteRate[0],
             msg.sender
             );
-            emit allTeamRate(
+            emit allTeamAddr(
+                userTeamReward[msg.sender][8],
+                userTeamReward[msg.sender][7],
+                userTeamReward[msg.sender][6],
+                userTeamReward[msg.sender][5],
                 userTeamReward[msg.sender][4],
                 userTeamReward[msg.sender][3],
                 userTeamReward[msg.sender][2],
                 userTeamReward[msg.sender][1],
                 userTeamReward[msg.sender][0],
+                msg.sender
+            );
+            emit allTeamRate(
+                teamRate[8],
+                teamRate[7],
+                teamRate[6],
+                teamRate[5],
                 teamRate[4],
                 teamRate[3],
                 teamRate[2],
@@ -2251,6 +2097,7 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
                 teamRate[0],
                 msg.sender
             );
+            
         buyId++;
     }
 
@@ -2273,32 +2120,8 @@ contract PrivateExchangePoolOgV4 is Ownable,Pausable ,ReentrancyGuard{
     function getAssignAndRateslength() public view returns(uint256) {
         return assignAndRates.length;
     }
-    function getAdminsLevelOneLength( address _user) public view returns( uint256 ) {
-        return setAdminLevelTwo_[_user].length;
-    }
-    function getAdminsLevelTwoLength(address _adminTwo) public view returns(uint256 ) {
-        return setAdminLevelThree_[_adminTwo].length;
-    }
-     function getAdminsLevelThreeLength(address _adminThree) public view returns(uint256) {
-        return setAdminLevelThree_[_adminThree].length;
-    }
-    function getAdminsLevelFourLength(address _adminFour) public view returns(uint256) {
-        return setAdminLevelFour_[_adminFour].length;
-    }
-      function getAdminsLevelFiveLength(address _adminFive) public view returns(uint256) {
-        return setAdminLevelFive_[_adminFive].length;
-    }
-        function getAdminsLevelSixLength(address _adminSix) public view returns(uint256) {
-        return setAdminLevelSix_[_adminSix].length;
-    }   
-    function getAdminsLevelSevenLength(address _adminSeven) public view returns(uint256) {
-        return setAdminLevelSeven_[_adminSeven].length;
-    }   
-    function getAdminsLevelEightLength(address _adminEight) public view returns(uint256) {
-        return setAdminLevelEight_[_adminEight].length;
-    }   
-    function getAdminsLevelNineLength(address _adminNine) public view returns(uint256) {
-        return setAdminLevelNine_[_adminNine].length;
+    function getAdminsLevelLength( address _user) public view returns( uint256 ) {
+        return setAdminLevel_[_user][userLevels[_user]].length;
     }
     function getfdtOgAmount(uint256 fee) public view returns(uint256) {
 	return (fee*getLatesPrice()/10**5)/salePrice;
