@@ -1922,7 +1922,7 @@ function removeAdmin(AdminLevel _level, address _addr)  internal{
     function addInviteRate(uint256[] memory _rate) public onlyOwner{
         require(!initRate);
         require(_rate.length == 5 || inviteRate.length < 5 );
-        for(uint256 i = 0; i < _rate.length; i++)` {
+        for(uint256 i = 0; i < _rate.length; i++) {
             inviteRate.push(_rate[i]);
         }
         initRate = true;
@@ -2005,13 +2005,15 @@ function removeAdmin(AdminLevel _level, address _addr)  internal{
                         if(checkAddrForAdminLevelNine(invite[i])){
                             for(uint256 j = 0 ; j < invitationLevel -i ; j++){
                         IWETH(weth).transfer(receiveRemainingTeamRewards, fee.mul(inviteRate[invitationLevel-j]).div(10000));
-                        flm.transfer(receiveRemainingTeamRewards,fdtAmount.mul(flmRate[invitationLevel - j]).div(10000));
+                        // flm.transfer(receiveRemainingTeamRewards,fdtAmount.mul(flmRate[invitationLevel - j]).div(10000));
+                        TransferHelper.safeTransfer(address(flm),receiveRemainingTeamRewards,fdtAmount.mul(flmRate[invitationLevel - j]).div(10000));
                             }
                    
                         break;
                         }
                     IWETH(weth).transfer(invite[i], fee.mul(inviteRate[i]).div(10000));
-                    flm.transfer(invite[i],fdtAmount.mul(flmRate[i]).div(10000));
+                    // flm.transfer(invite[i],fdtAmount.mul(flmRate[i]).div(10000));
+                    TransferHelper.safeTransfer(address(flm),invite[i],fdtAmount.mul(flmRate[i]).div(10000));
                     }
                  
                       for(uint i = 0 ; i < 9 ;i ++){
@@ -2019,13 +2021,15 @@ function removeAdmin(AdminLevel _level, address _addr)  internal{
                                 continue;
                             }
                        IWETH(weth).transfer(userTeamReward[msg.sender][i], fee.mul(teamRate[i]).div(10000));
-                        flm.transfer(userTeamReward[msg.sender][i], fdtAmount.mul(adminFlmReward[i]).div(10000));
-
+                        // flm.transfer(userTeamReward[msg.sender][i], fdtAmount.mul(adminFlmReward[i]).div(10000));
+                        TransferHelper.safeTransfer(address(flm),userTeamReward[msg.sender][i],fdtAmount.mul(adminFlmReward[i]).div(10000));
                         }
 
         IFireSeedCoupon(FireSeedCoupon)._mintExternal(recommender[msg.sender],FSC*10**18);
-        flm.transfer(msg.sender, flmAmount);
-        fdtOg.transfer(msg.sender, fdtAmount);
+        // flm.transfer(msg.sender, flmAmount);
+        TransferHelper.safeTransfer(address(flm),msg.sender,flmAmount);
+        // fdtOg.transfer(msg.sender, fdtAmount);
+        TransferHelper.safeTransfer(address(fdtOg),msg.sender,fdtAmount);
         userTotalBuy[msg.sender] = userTotalBuy[msg.sender].add(fee);
         totalDonate = totalDonate.add(fee);
             emit allRecord(
