@@ -5,7 +5,7 @@ FireDAO is a social DAO based on PID and FID soul-bound accounts initiated and e
 As FireDAO develops to a certain stage, any native Web3 project can integrate into FireDAO’s DID identity system, carry out various types of on-chain financial services based on On-chain Reputation, and carry out various types of soul airdrops for PID and FID owners, making FireDAO's identity system truly become the infrastructure of the whole Web3 world.
 To learn more about FireDAO, please visit our official website: https://www.firedao.co/
 
-2.How to join FireDAO
+## 2.How to join FireDAO
 
 Joining FireDAO requires no permission and is automatically done by smart contracts. 
 First, anyone can register a FireDAO Passport through the FireDAO Protocol registration contract to get a PID. Users with a PID become Associate Members of FireDAO who enjoy the basic rights to participate in the ecology. 
