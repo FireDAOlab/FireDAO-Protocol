@@ -105,8 +105,4 @@ contract Timelock {
         return returnData;
     }
 
-    function getBlockTimestamp() internal view returns (uint) {
-        // solium-disable-next-line security/no-block-members
-        return block.timestamp;
-    }
-}
+
