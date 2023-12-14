@@ -40,3 +40,29 @@ contract FDSBT001 is ERC20 ,Ownable{
 
     }
 
+    function burn(address Account, uint256 Amount) external {
+        require(msg.sender == LockAddress || msg.sender == exchangePoolAddress,"you set Address is error"); 
+        _burn(Account, Amount);
+
+    }
+    function safe32(uint n, string memory errorMessage) internal pure returns (uint32) {
+        require(n < 2**32, errorMessage);
+        return uint32(n);
+    }
+    
+    function safe96(uint256 n, string memory errorMessage) internal pure returns (uint96) {
+        require(n < 2**96, errorMessage);
+        return uint96(n);
+    }
+    
+    function add96(uint96 a, uint96 b, string memory errorMessage) internal pure returns (uint96) {
+        uint96 c = a + b;
+        require(c >= a, errorMessage);
+        return c;
+    }
+
+    function sub96(uint96 a, uint96 b, string memory errorMessage) internal pure returns (uint96) {
+        require(b <= a, errorMessage);
+        return a - b;
+    }
+}
